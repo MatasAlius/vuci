@@ -1,15 +1,12 @@
 <template>
   <div class="openvpn">
-
-    <!-- <a-button type="primary" @click="tempCommand()">.--.</a-button><br><br> -->
-
     <a-button type="primary" @click="showAddInstance"><a-icon type="plus" />New</a-button>
     <a-form v-if="addModal" :label-col="labelCol" :wrapper-col="wrapperCol" @submit.prevent="addInstance">
       <a-form-item label="Name of the instance" required >
         <a-input placeholder="Name of the instance" v-model="inputName" />
       </a-form-item>
       <a-form-item label="Role" required >
-        <a-select placeholder="Select a role" @change="inputRoleChange" v-model="inputRole" >
+        <a-select placeholder="Select a role" v-model="inputRole" >
           <a-select-option value="client">
             client
           </a-select-option>
@@ -24,9 +21,7 @@
         </a-button>
       </a-form-item>
     </a-form>
-
     <a-divider />
-
     <a-table :columns="columns" :data-source="instancesData">
       <a slot="name" slot-scope="text, record">
         <template v-if="record.role === 'server'">
@@ -55,8 +50,7 @@
         </a-popconfirm>
       </span>
     </a-table>
-
-    <a-modal v-model="editModal" :width="800" @cancel="cancelModal()">
+    <a-modal v-model="editModal" :width="800" @cancel="closeModal()">
       <template v-if="modalType === 'server'">
         <configuration :type=true :name="instanceName" :instanceData="instanceData" :key="instanceName + tempNumber" @close="closeModal" />
       </template>
@@ -65,8 +59,6 @@
       </template>
       <template #footer><div/></template>
     </a-modal>
-
-    <a-divider />
   </div>
 </template>
 
@@ -122,23 +114,16 @@ export default {
       instancesData: [],
       instanceData: [],
       instanceName: '',
-      tempNumber: 0,
-      router_lan: '',
-      router_mask: ''
+      tempNumber: 0
     }
   },
   created () {
-    this.$rpc.call('openvpnapp', 'getOpenvpn', { }).then(r => {
-      this.addData(r)
-    })
+    this.addData()
   },
   timers: {
     getOpenvpnStatus: { time: 5000, autostart: true, immediate: false, repeat: true }
   },
   methods: {
-    cancelModal () {
-      this.getNewData()
-    },
     closeModal () {
       this.getNewData()
       this.tempNumber += 1
@@ -147,33 +132,30 @@ export default {
     getNewData () {
       this.instances = []
       this.instancesData = []
-      this.$rpc.call('openvpnapp', 'getOpenvpn', { }).then(r => {
-        this.addData(r)
-      })
-      this.getOpenvpnStatus()
+      this.addData()
     },
-    addData (data) {
-      for (let i = 0; i < Object.keys(data).length; i++) {
-        this.instances.push(data[i])
-        var instanceStatus = 'Disabled'
-        if (data[i].enable === '1') {
-          instanceStatus = 'Inactive'
+    addData () {
+      this.$rpc.call('openvpnapp', 'getOpenvpn', { }).then(data => {
+        for (let i = 0; i < Object.keys(data).length; i++) {
+          this.instances.push(data[i])
+          var instanceStatus = 'Disabled'
+          if (data[i].enable === '1') {
+            instanceStatus = 'Inactive'
+          }
+          this.instancesData.push({ key: data[i]['.index'], name: data[i]['.name'], role: data[i].type, status: instanceStatus, switch: data[i].enable })
         }
-        this.instancesData.push({ key: data[i]['.index'], name: data[i]['.name'], role: data[i].type, status: instanceStatus, switch: data[i].enable })
         this.getOpenvpnStatus()
-      }
+      })
     },
     getOpenvpnStatus () {
       this.$rpc.call('ubus', 'call', { object: 'service', method: 'list' }).then(r => {
         for (let i = 0; i < Object.keys(this.instancesData).length; i++) {
-          var temp = this.instancesData[i].name
           if (this.instancesData[i].role === 'server') {
-            if (r.openvpn.length > 0) {
+            if (Object.keys(r.openvpn.instances).length > 0) {
               if (Object.prototype.hasOwnProperty.call(r.openvpn.instances, this.instancesData[i].name)) {
-                if (r.openvpn.instances[temp].running && this.instancesData[i].switch === '1') {
+                if (r.openvpn.instances[this.instancesData[i].name].running && this.instancesData[i].switch === '1') {
                   this.instancesData[i].status = 'Active'
-                }
-                if (!r.openvpn.instances[temp].running && this.instancesData[i].switch === '1') {
+                } else if (!r.openvpn.instances[this.instancesData[i].name].running && this.instancesData[i].switch === '1') {
                   this.instancesData[i].status = 'Inactive'
                 }
               }
@@ -208,11 +190,7 @@ export default {
         this.$rpc.call('openvpnapp', 'setOne', { name: this.inputName, type: 'openvpn', role: this.inputRole }).then(r => { })
         this.inputName = ''
         this.inputRole = ''
-        this.instances = []
-        this.instancesData = []
-        this.$rpc.call('openvpnapp', 'getOpenvpn', { }).then(r => {
-          this.addData(r)
-        })
+        this.getNewData()
       } else {
         this.$message.error('Not all fields are filled')
       }
@@ -256,9 +234,6 @@ export default {
         this.$rpc.call('openvpnapp', 'delete_keys', { path: value, name: name, key_type: keyType }).then(r => { })
       }
     },
-    inputRoleChange (value) {
-      this.inputRole = value
-    },
     switchClick (value) {
       var index = 0
       for (let i = 0; i < Object.keys(this.instancesData).length; i++) {
@@ -301,100 +276,6 @@ export default {
         }
       }
       this.editModal = true
-    },
-    tempCommand () {
-      // istrinti istestavus
-      this.$network.load().then(() => {
-        console.log('------- ip address -------')
-        const iface = this.$network.getInterface('lan')
-        if (!iface) {
-          this.waninfo = []
-          this.wanIsUp = false
-          return
-        }
-        console.log('Lan name: ' + iface.name)
-        this.router_mask = this.$uci.get('network', 'lan', 'netmask')
-        this.router_lan = iface.getIPv4Addrs()
-        console.log('Lan: ', this.router_lan[0])
-        console.log('Mask: ', this.router_mask)
-
-        this.$rpc.call('openvpnapp', 'getNetwork', { section: iface.name, option: 'netmask' }).then(r => {
-          console.log('------ getNetwork -------')
-          console.log(r)
-          if (r) {
-            if (r.length > 0) {
-              this.router_mask = r[0]
-              var inputIp = '192.168.1.64'
-              var inputMask = '255.255.255.192'
-              this.router_mask = '255.255.255.128'
-              console.log(this.inSubNet(inputIp, inputMask, this.router_lan[0], this.router_mask))
-            }
-          }
-        })
-      })
-    },
-    ip2long (ip) {
-      // istrinti istestavus
-      var components = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
-      if (components) {
-        var iplong = 0
-        var power = 1
-        for (var i = 4; i >= 1; i -= 1) {
-          iplong += power * parseInt(components[i])
-          power *= 256
-        }
-        return iplong
-      } else return -1
-    },
-    inSubNet (inputIp, inputMask, routerLan, routerMask) {
-      // istrinti istestavus
-      var baseIp
-      var longIp
-      longIp = this.ip2long(inputIp)
-      console.log('--------------')
-      console.log(inputIp)
-      console.log(longIp)
-      if (routerMask && ((baseIp = this.ip2long(routerLan)) >= 0)) {
-        console.log('Router ip: ' + routerLan)
-        console.log('Base ip: ' + baseIp)
-        console.log('Router mask: ' + routerMask)
-        var range = -this.maskSize(routerMask)
-        var longMask = -this.maskSize(inputMask)
-        console.log('Router mask size: ' + range)
-        console.log('Input mask size: ' + longMask)
-        // console.log('Input last ip: ' + rout)
-        // return (longIp > baseIp) && (longIp < baseIp + range - 1)
-        // return (longIp > baseIp || longIp === baseIp) && ((longIp < baseIp + range - 1) || (longIp === baseIp + range - 1))
-        var ipArray = inputIp.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
-        console.log(ipArray[4])
-        var suma = +ipArray[4] + +longMask
-        console.log(suma)
-        if (+ipArray[4] > 1 && suma > 255) {
-          console.log('Checkas: true')
-        }
-        console.log('Checkas2: ')
-        console.log(ipArray[4])
-        console.log(longMask)
-        console.log(+ipArray[4] === +longMask)
-        console.log('-------')
-        if (+ipArray[4] === +longMask) {
-          return true
-        }
-        console.log(baseIp + range - 2)
-        if ((longIp > baseIp - 1 || longIp === baseIp) && ((longIp < baseIp + range - 1) || (longIp === baseIp + range - 1))) {
-          return true
-        } else {
-          return false
-        }
-      } else return false
-    },
-    maskSize (IPaddress) {
-      // istrinti istestavus
-      var ip = IPaddress.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
-      if (ip) {
-        return (+ip[1] << 24) + (+ip[2] << 16) + (+ip[3] << 8) + (+ip[4])
-      }
-      return null
     }
   }
 }

@@ -26,6 +26,8 @@
 
 ![](/diagram.png)
 
+With OpenVPN and router's info and usage.
+
 OpenWrt web user interface implemented in [vue.js] and [Ant Design of Vue].
 
 Vuci uses [json-rpc] to communicate with OpenWrt subsystems and support ACL.
