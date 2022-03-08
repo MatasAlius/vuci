@@ -21,6 +21,13 @@ const router = new Router({
   {
     path: '/login',
     component: resolve => {
+      firstLogin().then(first => {
+        if (first) {
+          sessionStorage.setItem('firsttime', 1)
+        } else {
+          sessionStorage.setItem('firsttime', 0)
+        }
+      })
       axios.get(`/views/vuci-app-login.js?_t=${new Date().getTime()}`).then(r => {
         // eslint-disable-next-line no-eval
         return resolve(eval(r.data))
@@ -78,23 +85,34 @@ function firstLogin () {
 }
 
 router.beforeEach((to, from, next) => {
-  firstLogin().then(first => {
-    if (first) {
-      if (to.path !== '/wizard') { next('/wizard') } else { next() }
-    } else {
-      if (to.path === '/wizard') {
-        next('/')
-        return
-      }
+  if (to.path === '/wizard') {
+    next('/')
+    return
+  }
 
-      session.isAlive().then((alive) => {
-        if (alive) session.startHeartbeat()
-        else session.logout()
+  session.isAlive().then((alive) => {
+    if (alive) session.startHeartbeat()
+    else session.logout()
 
-        beforeEach(to, next, alive)
-      })
-    }
+    beforeEach(to, next, alive)
   })
+  // firstLogin().then(first => {
+  //   if (first) {
+  //     if (to.path !== '/wizard') { next('/wizard') } else { next() }
+  //   } else {
+  //     if (to.path === '/wizard') {
+  //       next('/')
+  //       return
+  //     }
+
+  //     session.isAlive().then((alive) => {
+  //       if (alive) session.startHeartbeat()
+  //       else session.logout()
+
+  //       beforeEach(to, next, alive)
+  //     })
+  //   }
+  // })
 })
 
 export default router

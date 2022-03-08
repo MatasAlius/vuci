@@ -7,10 +7,14 @@
       <a-layout-content style="padding: 0 16px 16px; height: 100vh">
         <vuci-header/>
         <div ref="vuci-main-content" class="vuci-main-content">
+          <password-modal :visible="visibility" :key="this.$route.path" />
           <transition name="main" mode="out-in">
             <router-view></router-view>
           </transition>
           <a-back-top :target="() => $refs['vuci-main-content']"/>
+        </div>
+        <div>
+          <device-info />
         </div>
         <div style="position: fixed; bottom: 10px; right: 40px">
           <a href="https://github.com/zhaojh329/vuci" target="_blank">Powered by vuci</a>
@@ -22,15 +26,33 @@
 <script>
 import VuciSide from './VuciSide.vue'
 import VuciHeader from './VuciHeader'
+import PasswordModal from './PasswordModal'
+import DeviceInfo from './DeviceInfo'
 
 export default {
   components: {
     VuciSide,
-    VuciHeader
+    VuciHeader,
+    PasswordModal,
+    DeviceInfo
+  },
+  data () {
+    return {
+      infoVisible: false
+    }
   },
   computed: {
     hostname () {
       return this.$store.state.hostname
+    },
+    visibility () {
+      if (this.$route.path === '/system/general/admin') {
+        return false
+      } else if (sessionStorage.getItem('firsttime') === '1') {
+        return true
+      } else {
+        return false
+      }
     }
   },
   watch: {
@@ -42,6 +64,8 @@ export default {
     this.$system.getBoardInfo().then(r => {
       this.$store.commit('setHostname', r.hostname)
     })
+  },
+  methods: {
   }
 }
 </script>

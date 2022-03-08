@@ -1,6 +1,6 @@
 include $(TOPDIR)/rules.mk
 
-APP_TITLE:=Example
+APP_TITLE:=OpenVPN
 
 include ../../vuci-app.mk
 

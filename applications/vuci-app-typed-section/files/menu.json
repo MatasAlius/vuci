@@ -1,0 +1,11 @@
+{
+    "examples": {
+        "title": "Examples",
+        "index": 90
+    },
+    "examples/typesection": {
+        "title": "Typed section example",
+        "view": "vuci-app-typed-section",
+        "index": 10
+    }
+}
