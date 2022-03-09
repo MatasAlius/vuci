@@ -67,9 +67,9 @@ import Configuration from './components/Configuration'
 
 const columns = [
   {
+    title: 'Name',
     dataIndex: 'name',
     key: 'name',
-    title: 'Name',
     scopedSlots: { customRender: 'name' }
   },
   {
@@ -90,7 +90,6 @@ const columns = [
     scopedSlots: { customRender: 'switch' }
   },
   {
-    title: '',
     scopedSlots: { customRender: 'button' }
   }
 ]
@@ -186,8 +185,7 @@ export default {
     addInstance () {
       if (this.inputName.length > 0 && this.inputRole.length > 0) {
         this.addModal = false
-        this.$message.success('Configuration added')
-        this.$rpc.call('openvpnapp', 'setOne', { name: this.inputName, type: 'openvpn', role: this.inputRole }).then(r => { })
+        this.$rpc.call('openvpnapp', 'setOne', { name: this.inputName, type: 'openvpn', role: this.inputRole }).then(r => { this.$message.success('Configuration added') })
         this.inputName = ''
         this.inputRole = ''
         this.getNewData()
@@ -226,8 +224,7 @@ export default {
           break
         }
       }
-      this.$rpc.call('openvpnapp', 'remove', { name: value2 }).then(r => { })
-      this.$message.success('Configuration deleted')
+      this.$rpc.call('openvpnapp', 'remove', { name: value2 }).then(r => { this.$message.success('Configuration deleted') })
     },
     deleteKey (type, value, name, keyType) {
       if (value !== '' && value !== undefined) {

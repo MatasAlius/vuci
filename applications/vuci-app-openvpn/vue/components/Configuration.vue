@@ -7,8 +7,16 @@
           <a-form-item label="Enable/disable" name="enable" required :label-col="labelCol" :wrapper-col="wrapperCol" >
             <a-switch name="enable" :checked="server.enable" @change="enableServerSwitch" />
           </a-form-item>
+      </template>
+      <template v-else>
+          <h2><a-icon type="user" /> {{ name }} configuration (client)</h2>
+          <a-divider />
+          <a-form-item label="Enable/disable" name="enable" required :label-col="labelCol" :wrapper-col="wrapperCol" >
+            <a-switch name="enable" :checked="client.enable" @change="enableClientSwitch" />
+          </a-form-item>
+      </template>
           <a-form-item label="Select authentication mode" required :label-col="labelCol" :wrapper-col="wrapperCol" >
-            <a-select default-value="static" v-model="authenticationType" @change="handleServerChange">
+            <a-select default-value="static" v-model="authenticationType" @change="handleChange">
               <a-select-option value="static">
                 Static key
               </a-select-option>
@@ -17,6 +25,7 @@
               </a-select-option>
             </a-select>
           </a-form-item>
+      <template v-if="type">
           <template v-if="authenticationType === 'static'">
             <a-form-item label="Local tunnel endpoint IP" name="local_ip" required :label-col="labelCol" :wrapper-col="wrapperCol">
               <a-input placeholder="Please input local tunnel endpoint IP" v-model="server.local_ip" />
@@ -96,21 +105,6 @@
       </template>
 
       <template v-else>
-        <h2><a-icon type="user" /> {{ name }} configuration (client)</h2>
-        <a-divider />
-        <a-form-item label="Enable/disable" name="enable" required :label-col="labelCol" :wrapper-col="wrapperCol" >
-          <a-switch name="enable" :checked="client.enable" @change="enableClientSwitch" />
-        </a-form-item>
-        <a-form-item label="Select authentication mode" required :label-col="labelCol" :wrapper-col="wrapperCol" >
-          <a-select default-value="static" v-model="authenticationType" @change="handleClientChange">
-            <a-select-option value="static">
-              Static key
-            </a-select-option>
-            <a-select-option value="tls">
-              TLS
-            </a-select-option>
-          </a-select>
-        </a-form-item>
         <a-form-item label="Remote host/IP address" name="client_remote" :label-col="labelCol" :wrapper-col="wrapperCol" required>
           <a-input placeholder="Please input remote host/IP address" v-model="client.remote" />
           <p v-if="error.client_remote" class="error">Please input remote host/IP address</p>
@@ -256,7 +250,8 @@ export default {
       router_lan: '',
       router_mask: '',
       tempName: '',
-      disableUpload: false
+      disableUpload: false,
+      check: false
     }
   },
   created () {
@@ -329,43 +324,39 @@ export default {
       if (ip) return (+ip[1] << 24) + (+ip[2] << 16) + (+ip[3] << 8) + (+ip[4])
       return null
     },
-    handleServerChange (value) {
+    handleChange (value) {
       this.authenticationType = value
       if (value === 'static') {
-        this.deleteKey('Server', this.server.ca, this.name, 'ca')
-        this.deleteKey('Server', this.server.cert, this.name, 'cert')
-        this.deleteKey('Server', this.server.key, this.name, 'key')
-        this.deleteKey('Server', this.server.dh, this.name, 'dh')
-        this.server.ca = ''
-        this.server.cert = ''
-        this.server.key = ''
-        this.server.dh = ''
         this.instanceData.ca = ''
         this.instanceData.cert = ''
         this.instanceData.key = ''
-        this.instanceData.dh = ''
+        if (this.type) {
+          this.deleteKey('Server', this.server.ca, this.name, 'ca')
+          this.deleteKey('Server', this.server.cert, this.name, 'cert')
+          this.deleteKey('Server', this.server.key, this.name, 'key')
+          this.deleteKey('Server', this.server.dh, this.name, 'dh')
+          this.server.ca = ''
+          this.server.cert = ''
+          this.server.key = ''
+          this.server.dh = ''
+          this.instanceData.dh = ''
+        } else {
+          this.deleteKey('Client', this.client.ca, this.name, 'ca')
+          this.deleteKey('Client', this.client.cert, this.name, 'cert')
+          this.deleteKey('Client', this.client.key, this.name, 'key')
+          this.client.ca = ''
+          this.client.cert = ''
+          this.client.key = ''
+        }
       } else {
-        this.deleteKey('Server', this.server.secret, this.name, 'secret')
-        this.server.secret = ''
         this.instanceData.secret = ''
-      }
-    },
-    handleClientChange (value) {
-      this.authenticationType = value
-      if (value === 'static') {
-        this.deleteKey('Client', this.client.ca, this.name, 'ca')
-        this.deleteKey('Client', this.client.cert, this.name, 'cert')
-        this.deleteKey('Client', this.client.key, this.name, 'key')
-        this.client.ca = ''
-        this.client.cert = ''
-        this.client.key = ''
-        this.instanceData.ca = ''
-        this.instanceData.cert = ''
-        this.instanceData.key = ''
-      } else {
-        this.deleteKey('Client', this.client.secret, this.name, 'secret')
-        this.client.secret = ''
-        this.instanceData.secret = ''
+        if (this.type) {
+          this.deleteKey('Server', this.server.secret, this.name, 'secret')
+          this.server.secret = ''
+        } else {
+          this.deleteKey('Client', this.client.secret, this.name, 'secret')
+          this.client.secret = ''
+        }
       }
     },
     deleteKey (type, value, name, keyType) {
@@ -376,13 +367,10 @@ export default {
     addInfo () {
       if (this.instanceData.type === 'server') {
         if (Object.prototype.hasOwnProperty.call(this.instanceData, 'enable')) {
-          if (this.instanceData.enable === '1') {
-            this.server.enable = true
-          } else {
-            this.server.enable = false
-          }
+          this.server.enable = this.instanceEnable2(this.instanceData.enable)
         }
         if (Object.prototype.hasOwnProperty.call(this.instanceData, '_auth')) {
+          this.server.port = this.instanceData.port
           if (this.instanceData._auth === 'skey') {
             this.authenticationType = 'static'
             if (Object.prototype.hasOwnProperty.call(this.instanceData, 'local_ip')) {
@@ -398,7 +386,6 @@ export default {
               this.server.network_mask = this.instanceData.network_mask
             }
             this.server.secret = this.instanceData.secret
-            this.server.port = this.instanceData.port
           } else {
             this.authenticationType = 'tls'
             if (Object.prototype.hasOwnProperty.call(this.instanceData, 'server_ip')) {
@@ -407,7 +394,6 @@ export default {
             if (Object.prototype.hasOwnProperty.call(this.instanceData, 'server_netmask')) {
               this.server.server_netmask = this.instanceData.server_netmask
             }
-            this.server.port = this.instanceData.port
             this.server.ca = this.instanceData.ca
             this.server.cert = this.instanceData.cert
             this.server.key = this.instanceData.key
@@ -416,11 +402,7 @@ export default {
         }
       } else {
         if (Object.prototype.hasOwnProperty.call(this.instanceData, 'enable')) {
-          if (this.instanceData.enable === '1') {
-            this.client.enable = true
-          } else {
-            this.client.enable = false
-          }
+          this.client.enable = this.instanceEnable2(this.instanceData.enable)
         }
         if (Object.prototype.hasOwnProperty.call(this.instanceData, 'network_ip')) {
           this.client.network_ip = this.instanceData.network_ip
@@ -428,32 +410,28 @@ export default {
         if (Object.prototype.hasOwnProperty.call(this.instanceData, 'network_mask')) {
           this.client.network_mask = this.instanceData.network_mask
         }
+        if (Object.prototype.hasOwnProperty.call(this.instanceData, 'remote')) {
+          this.client.remote = this.instanceData.remote
+        }
         if (Object.prototype.hasOwnProperty.call(this.instanceData, '_auth')) {
+          this.client.port = this.instanceData.port
           if (this.instanceData._auth === 'skey') {
             this.authenticationType = 'static'
-            if (Object.prototype.hasOwnProperty.call(this.instanceData, 'remote')) {
-              this.client.remote = this.instanceData.remote
-            }
             if (Object.prototype.hasOwnProperty.call(this.instanceData, 'local_ip')) {
               this.client.local_ip = this.instanceData.local_ip
             }
             if (Object.prototype.hasOwnProperty.call(this.instanceData, 'remote_ip')) {
               this.client.remote_ip = this.instanceData.remote_ip
             }
-            this.client.port = this.instanceData.port
             this.client.secret = this.instanceData.secret
           } else {
             this.authenticationType = 'tls'
-            if (Object.prototype.hasOwnProperty.call(this.instanceData, 'remote')) {
-              this.client.remote = this.instanceData.remote
-            }
             if (Object.prototype.hasOwnProperty.call(this.instanceData, 'server_ip')) {
               this.client.server_ip = this.instanceData.server_ip
             }
             if (Object.prototype.hasOwnProperty.call(this.instanceData, 'server_netmask')) {
               this.client.server_netmask = this.instanceData.server_netmask
             }
-            this.client.port = this.instanceData.port
             this.client.ca = this.instanceData.ca
             this.client.cert = this.instanceData.cert
             this.client.key = this.instanceData.key
@@ -462,61 +440,28 @@ export default {
       }
     },
     applyConfig (type) {
-      var check = false
+      this.check = false
       if (type) {
         if (this.authenticationType === 'static') {
           if (Object.prototype.hasOwnProperty.call(this.instanceData, 'secret')) {
-            if (this.server.secret.length <= 0 && this.instanceData.secret.length > 0) {
-              this.server.secret = this.instanceData.secret
-            }
+            this.server.secret = this.filePathLength(this.server.secret, this.instanceData.secret)
           }
-          this.error.server_local_ip = false
-          if (this.server.local_ip.length <= 0 || this.validateIp(this.server.local_ip)) {
-            check = true
-            this.error.server_local_ip = true
-            this.wrongIpMessage(this.server.local_ip)
-          }
-          this.error.server_network_ip = false
-          if (this.server.network_ip.length <= 0 || this.validateIp(this.server.network_ip)) {
-            check = true
-            this.error.server_network_ip = true
-            this.wrongIpMessage(this.server.network_ip)
-          }
-          this.error.server_remote_ip = false
-          if (this.server.remote_ip.length <= 0 || this.validateIp(this.server.remote_ip)) {
-            check = true
-            this.error.server_remote_ip = true
-            this.wrongIpMessage(this.server.remote_ip)
-          }
-          this.error.server_remote_ip = false
-          if (this.server.remote_ip.length > 0 && this.inSubNet(this.server.remote_ip, this.server.network_mask, this.router_lan, this.router_mask)) {
-            check = true
-            this.error.server_remote_ip = true
-            this.$message.error('Remote network IP address is in router\'s Lan IP interval or bad remote network netmask')
-          }
-          this.error.server_network_mask = false
-          if (this.server.network_mask.length <= 0 || this.validateMask(this.server.network_mask)) {
-            check = true
-            this.error.server_network_mask = true
-            this.wrongMaskMessage(this.server.network_mask)
-          }
-          if (this.server.remote_ip === this.router_lan[0]) {
-            this.$message.error('Remote network IP is same as the router\'s LAN address')
-            check = true
-          }
+          this.error.server_local_ip = this.validate(this.server.local_ip)
+          this.error.server_network_ip = this.validate(this.server.network_ip)
+          this.error.server_remote_ip = this.validate(this.server.remote_ip)
+          this.error.server_remote_ip = this.ipInRouterLan(this.server.remote_ip, this.server.network_mask)
+          this.error.server_network_mask = this.validate(this.server.network_mask)
+          this.sameIpMessage(this.server.remote, this.router_lan[0])
           if (this.server.secret === undefined) {
             this.$message.error('Upload static key file')
           } else {
-            if (this.server.secret === '') {
-              this.$message.error('Upload static key file')
-            }
-            if (!check && this.server.secret.length > 0) {
+            this.emptyFile(this.server.secret, 'Upload static key file')
+            if (!this.check && this.server.secret.length > 0) {
               if (!this.validateNumber(this.server.port)) {
                 this.server.port = 1194
               }
               var enableValue = this.instanceEnable(this.server.enable)
-              this.$message.success('Configuration applied')
-              this.$rpc.call('openvpnapp', 'setServerStaticKey', { name: this.name, type: 'openvpn', keepalive: '10 120', _name: this.name, data_ciphers: 'BF-CBC', persist_key: '1', port: this.server.port, persist_tun: '1', dev: 'tun_s_server', verb: '5', typetype: 'server', proto: 'udp', _auth: 'skey', cipher: 'BF-CBC', local_ip: this.server.local_ip, remote_ip: this.server.remote_ip, network_ip: this.server.network_ip, network_mask: this.server.network_mask, secret: this.server.secret, enable: enableValue }).then(r => { })
+              this.$rpc.call('openvpnapp', 'setServerStaticKey', { name: this.name, type: 'openvpn', keepalive: '10 120', _name: this.name, data_ciphers: 'BF-CBC', persist_key: '1', port: this.server.port, persist_tun: '1', dev: 'tun_s_server', verb: '5', typetype: 'server', proto: 'udp', _auth: 'skey', cipher: 'BF-CBC', local_ip: this.server.local_ip, remote_ip: this.server.remote_ip, network_ip: this.server.network_ip, network_mask: this.server.network_mask, secret: this.server.secret, enable: enableValue }).then(r => { this.$message.success('Configuration applied') })
               this.onCloseModal()
             } else {
               this.$message.error('Not all fields are filled')
@@ -524,59 +469,32 @@ export default {
           }
         } else {
           if (Object.prototype.hasOwnProperty.call(this.instanceData, 'ca')) {
-            if (this.server.ca.length <= 0 && this.instanceData.ca.length > 0) {
-              this.server.ca = this.instanceData.ca
-            }
+            this.server.ca = this.filePathLength(this.server.ca, this.instanceData.ca)
           }
           if (Object.prototype.hasOwnProperty.call(this.instanceData, 'cert')) {
-            if (this.server.cert.length <= 0 && this.instanceData.cert.length > 0) {
-              this.server.cert = this.instanceData.cert
-            }
+            this.server.cert = this.filePathLength(this.server.cert, this.instanceData.cert)
           }
           if (Object.prototype.hasOwnProperty.call(this.instanceData, 'key')) {
-            if (this.server.key.length <= 0 && this.instanceData.key.length > 0) {
-              this.server.key = this.instanceData.key
-            }
+            this.server.key = this.filePathLength(this.server.key, this.instanceData.key)
           }
           if (Object.prototype.hasOwnProperty.call(this.instanceData, 'dh')) {
-            if (this.server.dh.length <= 0 && this.instanceData.dh.length > 0) {
-              this.server.dh = this.instanceData.dh
-            }
+            this.server.dh = this.filePathLength(this.server.dh, this.instanceData.dh)
           }
-          this.error.server_ip = false
-          if (this.server.server_ip.length <= 0 || this.validateIp(this.server.server_ip)) {
-            check = true
-            this.error.server_ip = true
-            this.wrongIpMessage(this.server.server_ip)
-          }
-          this.error.server_netmask = false
-          if (this.server.server_netmask.length <= 0 || this.validateMask(this.server.server_netmask)) {
-            check = true
-            this.error.server_netmask = true
-            this.wrongMaskMessage(this.server.server_netmask)
-          }
+          this.error.server_ip = this.validate(this.server.server_ip)
+          this.error.server_netmask = this.validate(this.server.server_netmask)
           if (this.server.ca === undefined || this.server.cert === undefined || this.server.key === undefined || this.server.dh === undefined) {
             this.$message.error('Upload needed files')
           } else {
-            if (this.server.ca === '') {
-              this.$message.error('Upload certificate authority certificate file')
-            }
-            if (this.server.cert === '') {
-              this.$message.error('Upload server certificate file')
-            }
-            if (this.server.key === '') {
-              this.$message.error('Upload server key file')
-            }
-            if (this.server.dh === '') {
-              this.$message.error('Upload Diffie Hellman parameters file')
-            }
-            if (!check && this.server.ca.length > 0 && this.server.cert.length > 0 && this.server.key.length > 0 && this.server.dh.length > 0) {
+            this.emptyFile(this.server.ca, 'Upload certificate authority certificate file')
+            this.emptyFile(this.server.cert, 'Upload server certificate file')
+            this.emptyFile(this.server.key, 'Upload server key file')
+            this.emptyFile(this.server.dh, 'Upload Diffie Hellman parameters file')
+            if (!this.check && this.server.ca.length > 0 && this.server.cert.length > 0 && this.server.key.length > 0 && this.server.dh.length > 0) {
               if (!this.validateNumber(this.server.port)) {
                 this.server.port = 1194
               }
               var enableValue2 = this.instanceEnable(this.server.enable)
-              this.$message.success('Configuration applied')
-              this.$rpc.call('openvpnapp', 'setServerTls', { name: this.name, type: 'openvpn', keepalive: '10 120', _name: this.name, _tls_cipher: 'all', data_ciphers: 'BF-CBC', persist_key: '1', port: this.server.port, persist_tun: '1', dev: 'tun_s_server', verb: '5', typetype: 'server', proto: 'udp', _auth: 'tls', cipher: 'BF-CBC', server_ip: this.server.server_ip, server_netmask: this.server.server_netmask, auth: 'sha1', _tls_auth: 'none', ca: this.server.ca, cert: this.server.cert, key: this.server.key, dh: this.server.dh, tls_server: 1, client_config_dir: '/etc/openvpn/ccd', upload_files: 4, enable: enableValue2, push: 'route 192.168.145.0 255.255.255.0' }).then(r => { })
+              this.$rpc.call('openvpnapp', 'setServerTls', { name: this.name, type: 'openvpn', keepalive: '10 120', _name: this.name, _tls_cipher: 'all', data_ciphers: 'BF-CBC', persist_key: '1', port: this.server.port, persist_tun: '1', dev: 'tun_s_server', verb: '5', typetype: 'server', proto: 'udp', _auth: 'tls', cipher: 'BF-CBC', server_ip: this.server.server_ip, server_netmask: this.server.server_netmask, auth: 'sha1', _tls_auth: 'none', ca: this.server.ca, cert: this.server.cert, key: this.server.key, dh: this.server.dh, tls_server: 1, client_config_dir: '/etc/openvpn/ccd', upload_files: 4, enable: enableValue2, push: 'route 192.168.145.0 255.255.255.0' }).then(r => { this.$message.success('Configuration applied') })
               this.onCloseModal()
             } else {
               this.$message.error('Not all fields are filled')
@@ -584,77 +502,47 @@ export default {
           }
         }
       } else {
-        this.error.client_remote = false
-        if (this.client.remote.length <= 0 || this.validateIp(this.client.remote)) {
-          check = true
-          this.error.client_remote = true
-          this.wrongIpMessage(this.client.remote)
-        }
-        this.error.client_network_ip = false
-        if (this.client.network_ip.length > 0 && this.inSubNet(this.client.network_ip, this.client.network_mask, this.router_lan, this.router_mask)) {
-          check = true
-          this.error.client_network_ip = true
-          this.$message.error('Remote network IP address is in router\'s Lan IP interval or bad remote network netmask')
-        }
+        this.error.client_remote = this.validate(this.client.remote)
+        this.error.client_network_ip = this.ipInRouterLan(this.client.network_ip, this.client.network_mask)
         if (this.client.network_ip.length > 0 && this.client.network_mask.length <= 0) {
-          check = true
+          this.check = true
           this.error.network_mask = true
           this.$message.error('Input network mask')
         } else if (this.client.network_mask.length > 0 && this.client.network_ip.length <= 0) {
-          check = true
+          this.check = true
           this.error.network_ip = true
           this.$message.error('Input network ip')
         }
         this.error.client_network_ip = false
         if (this.client.network_ip.length > 0 && this.validateIp(this.client.network_ip)) {
-          check = true
           this.error.client_network_ip = true
           this.wrongIpMessage(this.client.local_ip)
         }
         this.error.client_network_mask = false
         if (this.client.network_mask.length > 0 && this.validateMask(this.client.network_mask)) {
-          check = true
           this.error.client_network_mask = true
           this.wrongMaskMessage(this.client.network_mask)
         }
         if (this.authenticationType === 'static') {
           if (Object.prototype.hasOwnProperty.call(this.instanceData, 'secret')) {
-            if (this.client.secret.length <= 0 && this.instanceData.secret.length > 0) {
-              this.client.secret = this.instanceData.secret
-            }
+            this.client.secret = this.filePathLength(this.client.secret, this.instanceData.secret)
           }
-          this.error.client_local_ip = false
-          if (this.client.local_ip.length <= 0 || this.validateIp(this.client.local_ip)) {
-            check = true
-            this.error.client_local_ip = true
-            this.wrongIpMessage(this.client.local_ip)
-          }
-          this.error.client_remote_ip = false
-          if (this.client.remote_ip.length <= 0 || this.validateIp(this.client.remote_ip)) {
-            check = true
-            this.error.client_remote_ip = true
-            this.wrongIpMessage(this.client.local_ip)
-          }
+          this.error.client_local_ip = this.validate(this.client.local_ip)
+          this.error.client_remote_ip = this.validate(this.client.remote_ip)
           if (this.client.port.length <= 0 || !this.validateNumber(this.client.port)) {
-            check = true
+            this.check = true
             this.error.client_port = true
             this.$message.error('Wrong port number')
           }
-          if (this.client.network_ip === this.router_lan[0]) {
-            this.$message.error('Remote network IP is same as the router\'s LAN address')
-            check = true
-          }
+          this.sameIpMessage(this.client.network_ip, this.router_lan[0])
           if (this.client.secret === undefined) {
             this.$message.error('Upload static key file')
           } else {
-            if (this.client.secret === '') {
-              this.$message.error('Upload static key file')
-            }
-            if (!check && this.client.secret.length > 0) {
+            this.emptyFile(this.client.secret, 'Upload static key file1')
+            if (!this.check && this.client.secret.length > 0) {
               var enableValueC = this.instanceEnable(this.client.enable)
-              this.$message.success('Configuration applied')
               var statusFile2 = '/tmp/openvpn-status_' + this.name + '.log'
-              this.$rpc.call('openvpnapp', 'setClientStaticKey', { name: this.name, type: 'openvpn', keepalive: '10 120', _name: this.name, data_ciphers: 'BF-CBC', nobind: '1', persist_key: '1', port: this.client.port, persist_tun: '1', dev: 'tun_c_' + this.name, status: statusFile2, verb: '5', typetype: 'client', proto: 'udp', _auth: 'skey', cipher: 'BF-CBC', remote: this.client.remote, resolv_retry: 'infinite', local_ip: this.client.local_ip, remote_ip: this.client.remote_ip, network_ip: this.client.network_ip, network_mask: this.client.network_mask, secret: this.client.secret, upload_files: 1, _tls_auth: 'none', enable: enableValueC }).then(r => { })
+              this.$rpc.call('openvpnapp', 'setClientStaticKey', { name: this.name, type: 'openvpn', keepalive: '10 120', _name: this.name, data_ciphers: 'BF-CBC', nobind: '1', persist_key: '1', port: this.client.port, persist_tun: '1', dev: 'tun_c_' + this.name, status: statusFile2, verb: '5', typetype: 'client', proto: 'udp', _auth: 'skey', cipher: 'BF-CBC', remote: this.client.remote, resolv_retry: 'infinite', local_ip: this.client.local_ip, remote_ip: this.client.remote_ip, network_ip: this.client.network_ip, network_mask: this.client.network_mask, secret: this.client.secret, upload_files: 1, _tls_auth: 'none', enable: enableValueC }).then(r => { this.$message.success('Configuration applied') })
               this.onCloseModal()
             } else {
               this.$message.error('Not all fields are filled')
@@ -662,40 +550,27 @@ export default {
           }
         } else {
           if (Object.prototype.hasOwnProperty.call(this.instanceData, 'ca')) {
-            if (this.client.ca.length <= 0 && this.instanceData.ca.length > 0) {
-              this.client.ca = this.instanceData.ca
-            }
+            this.client.ca = this.filePathLength(this.client.ca, this.instanceData.ca)
           }
           if (Object.prototype.hasOwnProperty.call(this.instanceData, 'cert')) {
-            if (this.client.cert.length <= 0 && this.instanceData.cert.length > 0) {
-              this.client.cert = this.instanceData.cert
-            }
+            this.client.cert = this.filePathLength(this.client.cert, this.instanceData.cert)
           }
           if (Object.prototype.hasOwnProperty.call(this.instanceData, 'key')) {
-            if (this.client.key.length <= 0 && this.instanceData.key.length > 0) {
-              this.client.key = this.instanceData.key
-            }
+            this.client.key = this.filePathLength(this.client.key, this.instanceData.key)
           }
           if (this.client.ca === undefined || this.client.cert === undefined || this.client.key === undefined) {
             this.$message.error('Upload needed files')
           } else {
-            if (this.client.ca === '') {
-              this.$message.error('Upload certificate authority certificate file')
-            }
-            if (this.client.cert === '') {
-              this.$message.error('Upload client certificate file')
-            }
-            if (this.client.key === '') {
-              this.$message.error('Upload client certificate file')
-            }
-            if (!check && this.client.ca.length > 0 && this.client.cert.length > 0 && this.client.key.length > 0) {
+            this.emptyFile(this.client.ca, 'Upload certificate authority certificate file')
+            this.emptyFile(this.client.cert, 'Upload client certificate file')
+            this.emptyFile(this.client.key, 'Upload client certificate file')
+            if (!this.check && this.client.ca.length > 0 && this.client.cert.length > 0 && this.client.key.length > 0) {
               if (!this.validateNumber(this.client.port)) {
                 this.client.port = 1194
               }
               var enableValueC2 = this.instanceEnable(this.client.enable)
-              this.$message.success('Configuration applied')
               var statusFile = '/tmp/openvpn-status_' + this.name + '.log'
-              this.$rpc.call('openvpnapp', 'setClientTls', { name: this.name, type: 'openvpn', keepalive: '10 120', _name: this.name, _tls_cipher: 'all', data_ciphers: 'BF-CBC', nobind: '1', persist_key: '1', port: this.client.port, persist_tun: '1', dev: 'tun_c_' + this.name, status: statusFile, verb: '5', typetype: 'client', proto: 'udp', _auth: 'tls', cipher: 'BF-CBC', remote: this.client.remote, resolv_retry: 'infinite', auth: 'sha1', _tls_auth: 'none', ca: this.client.ca, cert: this.client.cert, key: this.client.key, upload_files: 3, tls_client: '1', client: '1', enable: enableValueC2, network_ip: this.client.network_ip, network_mask: this.client.network_mask }).then(r => { })
+              this.$rpc.call('openvpnapp', 'setClientTls', { name: this.name, type: 'openvpn', keepalive: '10 120', _name: this.name, _tls_cipher: 'all', data_ciphers: 'BF-CBC', nobind: '1', persist_key: '1', port: this.client.port, persist_tun: '1', dev: 'tun_c_' + this.name, status: statusFile, verb: '5', typetype: 'client', proto: 'udp', _auth: 'tls', cipher: 'BF-CBC', remote: this.client.remote, resolv_retry: 'infinite', auth: 'sha1', _tls_auth: 'none', ca: this.client.ca, cert: this.client.cert, key: this.client.key, upload_files: 3, tls_client: '1', client: '1', enable: enableValueC2, network_ip: this.client.network_ip, network_mask: this.client.network_mask }).then(r => { this.$message.success('Configuration applied') })
               this.onCloseModal()
             } else {
               this.$message.error('Not all fields are filled')
@@ -704,19 +579,60 @@ export default {
         }
       }
     },
+    validate (value) {
+      if (value.length <= 0 || this.validateIp(value)) {
+        this.wrongIpMessage(value)
+        return true
+      } else {
+        return false
+      }
+    },
     wrongIpMessage (ip1) {
+      this.check = true
       if (this.validateIp(ip1) && ip1.length > 0) {
         this.$message.error('Wrong IP address')
       }
     },
     wrongMaskMessage (mask1) {
+      this.check = true
       if (this.validateMask(mask1) && mask1.length > 0) {
         this.$message.error('Wrong netmask')
+      }
+    },
+    sameIpMessage (ip1, ip2) {
+      if (ip1 === ip2) {
+        this.$message.error('Remote network IP is same as the router\'s LAN address')
+        this.check = true
+      }
+    },
+    ipInRouterLan (ip1, mask1) {
+      if (ip1.length > 0 && this.inSubNet(ip1, mask1, this.router_lan, this.router_mask)) {
+        this.check = true
+        this.$message.error('Remote network IP address is in router\'s Lan IP interval or bad remote network netmask')
+        return true
+      } else {
+        return false
+      }
+    },
+    emptyFile (value, text) {
+      if (value === '') {
+        this.$message.error(text)
+      }
+    },
+    filePathLength (value, value2) {
+      if (value.length <= 0 && value2.length > 0) {
+        return value2
+      } else {
+        return value
       }
     },
     instanceEnable (enable) {
       if (enable) return 1
       else return 0
+    },
+    instanceEnable2 (value) {
+      if (value === '1') return true
+      else return false
     },
     onUploadServerStatic (info) {
       if (this.onUpload(info)) {
