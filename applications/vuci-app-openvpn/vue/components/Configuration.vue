@@ -538,7 +538,7 @@ export default {
           if (this.client.secret === undefined) {
             this.$message.error('Upload static key file')
           } else {
-            this.emptyFile(this.client.secret, 'Upload static key file1')
+            this.emptyFile(this.client.secret, 'Upload static key file')
             if (!this.check && this.client.secret.length > 0) {
               var enableValueC = this.instanceEnable(this.client.enable)
               var statusFile2 = '/tmp/openvpn-status_' + this.name + '.log'

@@ -109,11 +109,13 @@ export default {
       instancesData: [],
       instanceData: [],
       instanceName: '',
-      tempNumber: 0
+      tempNumber: 0,
+      firsttime: false
     }
   },
   created () {
     this.addData()
+    this.firsttime = false
   },
   timers: {
     getOpenvpnStatus: { time: 5000, autostart: true, immediate: false, repeat: true }
@@ -123,6 +125,7 @@ export default {
       this.getNewData()
       this.tempNumber += 1
       this.editModal = false
+      this.firsttime = false
     },
     getNewData () {
       this.instances = []
@@ -130,6 +133,8 @@ export default {
       this.addData()
     },
     addData () {
+      var tempRole = this.inputRole
+      var tempName = this.inputName
       this.$rpc.call('openvpnapp', 'getOpenvpn', { }).then(data => {
         for (let i = 0; i < Object.keys(data).length; i++) {
           this.instances.push(data[i])
@@ -139,6 +144,9 @@ export default {
           }
           this.instancesData.push({ key: data[i]['.index'], name: data[i]['.name'], role: data[i].type, status: instanceStatus, switch: data[i].enable })
         }
+        if (this.firsttime) {
+          this.clickEdit(tempRole, tempName)
+        }
         this.getOpenvpnStatus()
         this.serverRoleDisable()
       })
@@ -147,12 +155,14 @@ export default {
       this.$rpc.call('ubus', 'call', { object: 'service', method: 'list' }).then(r => {
         for (let i = 0; i < Object.keys(this.instancesData).length; i++) {
           if (this.instancesData[i].role === 'server') {
-            if (Object.keys(r.openvpn.instances).length > 0) {
-              if (Object.prototype.hasOwnProperty.call(r.openvpn.instances, this.instancesData[i].name)) {
-                if (r.openvpn.instances[this.instancesData[i].name].running && this.instancesData[i].switch === '1') {
-                  this.instancesData[i].status = 'Active'
-                } else if (!r.openvpn.instances[this.instancesData[i].name].running && this.instancesData[i].switch === '1') {
-                  this.instancesData[i].status = 'Inactive'
+            if (r) {
+              if (Object.keys(r.openvpn.instances).length > 0) {
+                if (Object.prototype.hasOwnProperty.call(r.openvpn.instances, this.instancesData[i].name)) {
+                  if (r.openvpn.instances[this.instancesData[i].name].running && this.instancesData[i].switch === '1') {
+                    this.instancesData[i].status = 'Active'
+                  } else if (!r.openvpn.instances[this.instancesData[i].name].running && this.instancesData[i].switch === '1') {
+                    this.instancesData[i].status = 'Inactive'
+                  }
                 }
               }
             }
@@ -173,11 +183,13 @@ export default {
     },
     addInstance () {
       if (this.inputName.length > 0 && this.inputRole.length > 0) {
-        this.$rpc.call('openvpnapp', 'setOne', { name: this.inputName, type: 'openvpn', role: this.inputRole }).then(r => { this.$message.success('Configuration added') })
-        this.getNewData()
-        this.clickEdit(this.inputRole, this.inputName)
-        this.inputName = ''
-        this.inputRole = 'client'
+        this.$rpc.call('openvpnapp', 'setOne', { name: this.inputName, type: 'openvpn', role: this.inputRole }).then(r => {
+          this.$message.success('Configuration added')
+          this.firsttime = true
+          this.getNewData()
+          this.inputName = ''
+          this.inputRole = 'client'
+        })
       } else {
         this.$message.error('Not all fields are filled')
       }
@@ -235,7 +247,9 @@ export default {
         this.instancesData[index].status = 'Disabled'
         this.changeEnable(this.instancesData[index].switch, index)
         if (this.instancesData[index].role === 'client') {
-          this.$rpc.call('openvpnapp', 'deleteFile', { path: this.instances[index].status }).then(r => { })
+          if (this.instances[index].status) {
+            this.$rpc.call('openvpnapp', 'deleteFile', { path: this.instances[index].status }).then(r => { })
+          }
         }
       } else {
         this.instancesData[index].switch = '1'
@@ -243,7 +257,7 @@ export default {
         this.instancesData[index].status = 'Inactive'
         this.changeEnable(this.instancesData[index].switch, index)
         if (this.instancesData[index].role === 'client') {
-          this.$rpc.call('openvpnapp', 'restartOpenVpn', { }).then(r => { })
+          this.$uci.apply().then(() => { this.$rpc.call('openvpnapp', 'restartOpenVpn', { }).then(r => { }) })
         }
       }
       this.getOpenvpnStatus()
@@ -254,8 +268,8 @@ export default {
     clickEdit (role, name) {
       this.modalType = role
       this.instanceName = name
-      this.instanceData = ''
       this.tempNumber += 1
+      this.instanceData = []
       for (let i = 0; i < Object.keys(this.instances).length; i++) {
         if (this.instances[i]['.name'] === name) {
           this.instanceData = this.instances[i]
