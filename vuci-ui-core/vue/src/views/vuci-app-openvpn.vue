@@ -1,27 +1,5 @@
 <template>
   <div class="openvpn">
-    <a-button type="primary" @click="showAddInstance"><a-icon type="plus" />New</a-button>
-    <a-form v-if="addModal" :label-col="labelCol" :wrapper-col="wrapperCol" @submit.prevent="addInstance">
-      <a-form-item label="Name of the instance" required >
-        <a-input placeholder="Name of the instance" v-model="inputName" />
-      </a-form-item>
-      <a-form-item label="Role" required >
-        <a-select placeholder="Select a role" v-model="inputRole" >
-          <a-select-option value="client">
-            client
-          </a-select-option>
-          <a-select-option value="server" :disabled="disableServer">
-            server
-          </a-select-option>
-        </a-select>
-      </a-form-item>
-      <a-form-item :wrapper-col="{ span: 10, offset: 6 }">
-        <a-button type="primary" html-type="submit">
-          Add
-        </a-button>
-      </a-form-item>
-    </a-form>
-    <a-divider />
     <a-table :columns="columns" :data-source="instancesData">
       <a slot="name" slot-scope="text, record">
         <template v-if="record.role === 'server'">
@@ -50,6 +28,27 @@
         </a-popconfirm>
       </span>
     </a-table>
+    <a-divider />
+    <a-form layout="inline" @submit.prevent="addInstance">
+      <a-form-item label="Name of the instance" required >
+        <a-input placeholder="Name of the instance" v-model="inputName" />
+      </a-form-item>
+      <a-form-item label="Role" required>
+        <a-select placeholder="Select a role" v-model="inputRole">
+          <a-select-option value="client">
+            client
+          </a-select-option>
+          <a-select-option value="server" :disabled="disableServer">
+            server
+          </a-select-option>
+        </a-select>
+      </a-form-item>
+      <a-form-item>
+        <a-button type="primary" html-type="submit">
+          <a-icon type="plus" />Add instance
+        </a-button>
+      </a-form-item>
+    </a-form>
     <a-modal v-model="editModal" :width="800" @cancel="closeModal()">
       <template v-if="modalType === 'server'">
         <configuration :type=true :name="instanceName" :instanceData="instanceData" :key="instanceName + tempNumber" @close="closeModal" />
@@ -100,11 +99,8 @@ export default {
   },
   data () {
     return {
-      labelCol: { span: 6 },
-      wrapperCol: { span: 4 },
       columns,
       editModal: false,
-      addModal: false,
       inputName: '',
       inputRole: 'client',
       disableServer: false,
@@ -144,6 +140,7 @@ export default {
           this.instancesData.push({ key: data[i]['.index'], name: data[i]['.name'], role: data[i].type, status: instanceStatus, switch: data[i].enable })
         }
         this.getOpenvpnStatus()
+        this.serverRoleDisable()
       })
     },
     getOpenvpnStatus () {
@@ -174,21 +171,13 @@ export default {
         }
       })
     },
-    showAddInstance () {
-      this.addModal = !this.addModal
-      if (this.instancesData.some(e => e.role === 'server')) {
-        this.disableServer = true
-      } else {
-        this.disableServer = false
-      }
-    },
     addInstance () {
       if (this.inputName.length > 0 && this.inputRole.length > 0) {
-        this.addModal = false
         this.$rpc.call('openvpnapp', 'setOne', { name: this.inputName, type: 'openvpn', role: this.inputRole }).then(r => { this.$message.success('Configuration added') })
-        this.inputName = ''
-        this.inputRole = ''
         this.getNewData()
+        this.clickEdit(this.inputRole, this.inputName)
+        this.inputName = ''
+        this.inputRole = 'client'
       } else {
         this.$message.error('Not all fields are filled')
       }
@@ -221,10 +210,11 @@ export default {
           }
           this.instancesData.splice(i, 1)
           this.instances.splice(i, 1)
+          this.serverRoleDisable()
           break
         }
       }
-      this.$rpc.call('openvpnapp', 'remove', { name: value2 }).then(r => { this.$message.success('Configuration deleted') })
+      this.$rpc.call('openvpnapp', 'remove', { name: value2 }).then(r => { this.$uci.apply().then(() => { this.$rpc.call('openvpnapp', 'restartOpenVpn', { }).then(r => { this.$message.success('Configuration deleted') }) }) })
     },
     deleteKey (type, value, name, keyType) {
       if (value !== '' && value !== undefined) {
@@ -259,7 +249,7 @@ export default {
       this.getOpenvpnStatus()
     },
     changeEnable (enableValue, id) {
-      this.$rpc.call('openvpnapp', 'set', { section: this.instances[id]['.name'], option: 'enable', value: enableValue }).then(r => { })
+      this.$rpc.call('openvpnapp', 'set', { section: this.instances[id]['.name'], option: 'enable', value: enableValue }).then(r => { this.$uci.apply().then(() => { }) })
     },
     clickEdit (role, name) {
       this.modalType = role
@@ -273,6 +263,13 @@ export default {
         }
       }
       this.editModal = true
+    },
+    serverRoleDisable () {
+      if (this.instancesData.some(e => e.role === 'server')) {
+        this.disableServer = true
+      } else {
+        this.disableServer = false
+      }
     }
   }
 }

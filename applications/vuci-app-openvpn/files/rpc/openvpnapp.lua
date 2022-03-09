@@ -125,6 +125,7 @@ function M.deleteServerTls(name)
 	c:delete("openvpn", name, "client_config_dir")
 	c:delete("openvpn", name, "push")
 	c:delete("openvpn", name, "upload_files")
+	c:delete("openvpn", name, "comp_lzo")
 
 	c:commit("openvpn")
 end	
@@ -199,6 +200,7 @@ function M.setServerTls(params)
 	c:set("openvpn", params.name, "client_config_dir", params.client_config_dir)
 	c:set("openvpn", params.name, "push", { params.push })
 	c:set("openvpn", params.name, "upload_files", params.upload_files)
+	c:set("openvpn", params.name, "comp_lzo", "no")
 
 	c:commit("openvpn")
 end
@@ -229,6 +231,7 @@ function M.deleteClientTls(name)
 	c:delete("openvpn", name, "client")
 	c:delete("openvpn", name, "network_ip")
 	c:delete("openvpn", name, "network_mask")
+	c:delete("openvpn", name, "comp_lzo")
 
 	c:commit("openvpn")
 end	
@@ -299,6 +302,7 @@ function M.setClientTls(params)
 	c:set("openvpn", params.name, "enable", params.enable)
 	c:set("openvpn", params.name, "network_ip", params.network_ip)
 	c:set("openvpn", params.name, "network_mask", params.network_mask)
+	c:set("openvpn", params.name, "comp_lzo", "no")
 
 	c:commit("openvpn")
 end

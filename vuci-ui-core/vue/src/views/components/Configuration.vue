@@ -461,7 +461,7 @@ export default {
                 this.server.port = 1194
               }
               var enableValue = this.instanceEnable(this.server.enable)
-              this.$rpc.call('openvpnapp', 'setServerStaticKey', { name: this.name, type: 'openvpn', keepalive: '10 120', _name: this.name, data_ciphers: 'BF-CBC', persist_key: '1', port: this.server.port, persist_tun: '1', dev: 'tun_s_server', verb: '5', typetype: 'server', proto: 'udp', _auth: 'skey', cipher: 'BF-CBC', local_ip: this.server.local_ip, remote_ip: this.server.remote_ip, network_ip: this.server.network_ip, network_mask: this.server.network_mask, secret: this.server.secret, enable: enableValue }).then(r => { this.$message.success('Configuration applied') })
+              this.$rpc.call('openvpnapp', 'setServerStaticKey', { name: this.name, type: 'openvpn', keepalive: '10 120', _name: this.name, data_ciphers: 'BF-CBC', persist_key: '1', port: this.server.port, persist_tun: '1', dev: 'tun_s_server', verb: '5', typetype: 'server', proto: 'udp', _auth: 'skey', cipher: 'BF-CBC', local_ip: this.server.local_ip, remote_ip: this.server.remote_ip, network_ip: this.server.network_ip, network_mask: this.server.network_mask, secret: this.server.secret, enable: enableValue }).then(r => { this.$uci.apply().then(() => { this.$rpc.call('openvpnapp', 'restartOpenVpn', { }).then(r => { this.$message.success('Configuration applied') }) }) })
               this.onCloseModal()
             } else {
               this.$message.error('Not all fields are filled')
@@ -494,7 +494,7 @@ export default {
                 this.server.port = 1194
               }
               var enableValue2 = this.instanceEnable(this.server.enable)
-              this.$rpc.call('openvpnapp', 'setServerTls', { name: this.name, type: 'openvpn', keepalive: '10 120', _name: this.name, _tls_cipher: 'all', data_ciphers: 'BF-CBC', persist_key: '1', port: this.server.port, persist_tun: '1', dev: 'tun_s_server', verb: '5', typetype: 'server', proto: 'udp', _auth: 'tls', cipher: 'BF-CBC', server_ip: this.server.server_ip, server_netmask: this.server.server_netmask, auth: 'sha1', _tls_auth: 'none', ca: this.server.ca, cert: this.server.cert, key: this.server.key, dh: this.server.dh, tls_server: 1, client_config_dir: '/etc/openvpn/ccd', upload_files: 4, enable: enableValue2, push: 'route 192.168.145.0 255.255.255.0' }).then(r => { this.$message.success('Configuration applied') })
+              this.$rpc.call('openvpnapp', 'setServerTls', { name: this.name, type: 'openvpn', keepalive: '10 120', _name: this.name, _tls_cipher: 'all', data_ciphers: 'BF-CBC', persist_key: '1', port: this.server.port, persist_tun: '1', dev: 'tun_s_server', verb: '5', typetype: 'server', proto: 'udp', _auth: 'tls', cipher: 'BF-CBC', server_ip: this.server.server_ip, server_netmask: this.server.server_netmask, auth: 'sha1', _tls_auth: 'none', ca: this.server.ca, cert: this.server.cert, key: this.server.key, dh: this.server.dh, tls_server: 1, client_config_dir: '/etc/openvpn/ccd', upload_files: 4, enable: enableValue2, push: 'route 192.168.145.0 255.255.255.0' }).then(r => { this.$uci.apply().then(() => { this.$rpc.call('openvpnapp', 'restartOpenVpn', { }).then(r => { this.$message.success('Configuration applied') }) }) })
               this.onCloseModal()
             } else {
               this.$message.error('Not all fields are filled')
@@ -542,7 +542,7 @@ export default {
             if (!this.check && this.client.secret.length > 0) {
               var enableValueC = this.instanceEnable(this.client.enable)
               var statusFile2 = '/tmp/openvpn-status_' + this.name + '.log'
-              this.$rpc.call('openvpnapp', 'setClientStaticKey', { name: this.name, type: 'openvpn', keepalive: '10 120', _name: this.name, data_ciphers: 'BF-CBC', nobind: '1', persist_key: '1', port: this.client.port, persist_tun: '1', dev: 'tun_c_' + this.name, status: statusFile2, verb: '5', typetype: 'client', proto: 'udp', _auth: 'skey', cipher: 'BF-CBC', remote: this.client.remote, resolv_retry: 'infinite', local_ip: this.client.local_ip, remote_ip: this.client.remote_ip, network_ip: this.client.network_ip, network_mask: this.client.network_mask, secret: this.client.secret, upload_files: 1, _tls_auth: 'none', enable: enableValueC }).then(r => { this.$message.success('Configuration applied') })
+              this.$rpc.call('openvpnapp', 'setClientStaticKey', { name: this.name, type: 'openvpn', keepalive: '10 120', _name: this.name, data_ciphers: 'BF-CBC', nobind: '1', persist_key: '1', port: this.client.port, persist_tun: '1', dev: 'tun_c_' + this.name, status: statusFile2, verb: '5', typetype: 'client', proto: 'udp', _auth: 'skey', cipher: 'BF-CBC', remote: this.client.remote, resolv_retry: 'infinite', local_ip: this.client.local_ip, remote_ip: this.client.remote_ip, network_ip: this.client.network_ip, network_mask: this.client.network_mask, secret: this.client.secret, upload_files: 1, _tls_auth: 'none', enable: enableValueC }).then(r => { this.$uci.apply().then(() => { this.$rpc.call('openvpnapp', 'restartOpenVpn', { }).then(r => { this.$message.success('Configuration applied') }) }) })
               this.onCloseModal()
             } else {
               this.$message.error('Not all fields are filled')
@@ -570,7 +570,7 @@ export default {
               }
               var enableValueC2 = this.instanceEnable(this.client.enable)
               var statusFile = '/tmp/openvpn-status_' + this.name + '.log'
-              this.$rpc.call('openvpnapp', 'setClientTls', { name: this.name, type: 'openvpn', keepalive: '10 120', _name: this.name, _tls_cipher: 'all', data_ciphers: 'BF-CBC', nobind: '1', persist_key: '1', port: this.client.port, persist_tun: '1', dev: 'tun_c_' + this.name, status: statusFile, verb: '5', typetype: 'client', proto: 'udp', _auth: 'tls', cipher: 'BF-CBC', remote: this.client.remote, resolv_retry: 'infinite', auth: 'sha1', _tls_auth: 'none', ca: this.client.ca, cert: this.client.cert, key: this.client.key, upload_files: 3, tls_client: '1', client: '1', enable: enableValueC2, network_ip: this.client.network_ip, network_mask: this.client.network_mask }).then(r => { this.$message.success('Configuration applied') })
+              this.$rpc.call('openvpnapp', 'setClientTls', { name: this.name, type: 'openvpn', keepalive: '10 120', _name: this.name, _tls_cipher: 'all', data_ciphers: 'BF-CBC', nobind: '1', persist_key: '1', port: this.client.port, persist_tun: '1', dev: 'tun_c_' + this.name, status: statusFile, verb: '5', typetype: 'client', proto: 'udp', _auth: 'tls', cipher: 'BF-CBC', remote: this.client.remote, resolv_retry: 'infinite', auth: 'sha1', _tls_auth: 'none', ca: this.client.ca, cert: this.client.cert, key: this.client.key, upload_files: 3, tls_client: '1', client: '1', enable: enableValueC2, network_ip: this.client.network_ip, network_mask: this.client.network_mask }).then(r => { this.$uci.apply().then(() => { this.$rpc.call('openvpnapp', 'restartOpenVpn', { }).then(r => { this.$message.success('Configuration applied') }) }) })
               this.onCloseModal()
             } else {
               this.$message.error('Not all fields are filled')
@@ -724,11 +724,7 @@ export default {
       var value = 0
       if (enableValue) value = 1
       else value = 0
-      this.$rpc.call('openvpnapp', 'set', { section: this.name, option: 'enable', value: value }).then(r => {
-        if (!this.type && value === 1) {
-          this.$rpc.call('openvpnapp', 'restartOpenVpn', { }).then(r => { })
-        }
-      })
+      this.$rpc.call('openvpnapp', 'set', { section: this.name, option: 'enable', value: value }).then(r => { })
     },
     onCloseModal () {
       this.$emit('close')
