@@ -25,7 +25,7 @@ function M.getLocation(params)
 	return params
 end
 
-function M.getServerList(params)
+function M.getServerList2(params)
 	headers = {
 		"Accept: application/xml",
 		"Accept-Language: en",
@@ -34,7 +34,7 @@ function M.getServerList(params)
 	}
 		
 	c = cURL.easy{
-		url            = "https://gist.githubusercontent.com/autos/6f11ffa74a414fa58d4587a77d1f7ea7/raw/63bcfe0889798653d679be6fc17efc3f60dc4714/speedtest.php",
+		url = "https://gist.githubusercontent.com/autos/6f11ffa74a414fa58d4587a77d1f7ea7/raw/63bcfe0889798653d679be6fc17efc3f60dc4714/speedtest.php",
 		ssl_verifypeer = false,
 		ssl_verifyhost = false,
 		httpheader     = headers,
@@ -46,6 +46,29 @@ function M.getServerList(params)
 	c:perform()
 	params.response = c:getinfo_response_code()
 	return params
+end
+
+function M.getServerList(params)
+	
+	f = io.open("serverlist.txt", "w")
+	-- login_url = "http://ipwhois.app/json/8.8.8.8"
+	-- be nurodyto ip rodys dabartinio ip info
+	local results
+	
+	c = cURL.easy{
+		url = "https://gist.githubusercontent.com/autos/6f11ffa74a414fa58d4587a77d1f7ea7/raw/63bcfe0889798653d679be6fc17efc3f60dc4714/speedtest.php",
+		ssl_verifypeer = false,
+		ssl_verifyhost = false,
+		writefunction  = function(str)
+			results = str
+			f:write(str)
+		end
+	}
+	c:perform()
+	f:close()
+	results = c:getinfo_response_code()
+  os.execute('sed "-1,2d" serverlist.txt | head -n-2 > serverlist2.txt')
+	return results
 end
 
 function M.readFile(params)
@@ -66,7 +89,7 @@ end
 function M.readAllFile(params)
   local arr = {}
 
-	local path = "/tmp/serverlist.txt"
+	local path = "/tmp/serverlist2.txt"
 
 	local f = io.open(path, "r")
 	if f~=nil then
