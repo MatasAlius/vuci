@@ -30,7 +30,7 @@
     </a-table>
     <a-divider />
     <a-form layout="inline" @submit.prevent="addInstance">
-      <a-form-item label="Name of the instance" required >
+      <a-form-item label="Name of the instance" required rules="email">
         <a-input placeholder="Name of the instance" v-model="inputName" />
       </a-form-item>
       <a-form-item label="Role" required>
