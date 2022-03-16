@@ -123,20 +123,18 @@ function M.speedTestCurl(params)
 		:setopt_url(params.url)
 		:setopt_httppost(post)
 		:setopt_timeout(2)
-		:setopt_connecttimeout(2)
+		:setopt_connecttimeout(1)
 	
 	local ok, err = pcall(function() c:perform() end)
-	params.ok = 1
-	params.err = 1
-	-- if ok then
-	-- 	params.response = c:getinfo_response_code()
-	-- 	if params.response == 301 then
-	-- 		params.connect = c:getinfo_connect_time()
-	-- 		params.total = c:getinfo_total_time()
-	-- 	end
-	-- else
-	-- 	params.response = 404
-	-- end
+	params.ok = ok
+	params.err = err
+	params.response = c:getinfo_response_code()
+	if ok then
+		if params.response == 200 then
+			params.connect = c:getinfo_connect_time()
+			params.total = c:getinfo_total_time()
+		end
+	end
 	c:close()
 	return params
 end

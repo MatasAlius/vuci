@@ -26,7 +26,7 @@
 
 ![](/diagram.png)
 
-With OpenVPN and router's info and usage.
+With OpenVPN, router's info and usage and speed test.
 
 OpenWrt web user interface implemented in [vue.js] and [Ant Design of Vue].
 

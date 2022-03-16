@@ -131,9 +131,9 @@ export default {
     // this.getServerList()
     // this.getReadFile()
     // var url = 'http://speed-kaunas.zebra.lt/speedtest/upload.php'
-    var url = 'http://speedtest.lixp.lt/speedtest/upload.php'
+    var url = 'http://speedtest.litnet.lt/speedtest/upload.php'
     this.$rpc.call('speedtest', 'speedTestCurl', { url: url }).then(r => {
-      console.log('Res:')
+      console.log('Results:')
       console.log(r)
     })
   },
