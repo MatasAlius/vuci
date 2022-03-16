@@ -1,11 +1,29 @@
 <template>
   <div class="speed-test">
-    <a-card title="Information" style="width: 400px">
-      <h4>Public IP address: {{ user_ip }}</h4>
-      <h4>Country: {{ user_country }}</h4>
-      <h4>City: {{ user_city }}</h4>
-      <h4>ISP: {{ user_isp }}</h4>
-    </a-card>
+    <a-row :gutter="16">
+      <a-col :span="8">
+        <a-card title="Information" style="width: 400px" :bordered="false">
+          <h4>Public IP address: {{ user_ip }}</h4>
+          <h4>Country: {{ user_country }}</h4>
+          <h4>City: {{ user_city }}</h4>
+          <h4>ISP: {{ user_isp }}</h4>
+        </a-card>
+      </a-col>
+      <a-col :span="8">
+        <a-card title="Speed test" style="width: 400px" :bordered="false">
+          <a-form @submit.prevent="startTest" :label-col="{ span: 8 }" :wrapper-col="{ span: 4 }">
+            <a-form-item label="Choose server">
+              <a-button @click="btnSelect"><a-icon type="dashboard" />{{ selectedServer.name }}</a-button>
+            </a-form-item>
+            <a-form-item>
+              <a-button type="primary" html-type="submit" size="large">
+                <a-icon type="play-circle" />Start
+              </a-button>
+            </a-form-item>
+          </a-form>
+        </a-card>
+      </a-col>
+    </a-row>
 
     <gauge
       :heading="gaugeTitle"
@@ -13,7 +31,7 @@
       :max="100"
       :value="gaugeValue"
       :valueToExceedLimits="true"
-      activeFill="blue"
+      activeFill="red"
       inactiveFill="green"
     />
     <a-icon slot="icon" type="disconnect" />
@@ -32,7 +50,7 @@
 
     <a-divider />
 
-    <a-modal v-model="serverListModal" :width="600" title="Choose server" @cancel="btnSelect" :footer="null" :sorter="true">
+    <a-modal v-model="serverListModal" :width="800" title="Choose server" @cancel="btnSelect" :footer="null" :sorter="true">
       <a-table :columns="columns" :data-source="serverList">
         <span slot="name" slot-scope="text">
           <template> {{ text }}</template>
@@ -49,27 +67,11 @@
       </a-table>
     </a-modal>
 
-    <a-button type="primary" @click="btnSelect">Choose server</a-button>
+    {{ serverUserCountry }} {{ serverUserCountry.length }}
 
-    <a-form layout="inline" @submit.prevent="startTest">
-      <a-form-item label="Choose server">
-        <a-select placeholder="best" v-model="inputServer">
-          <a-select-option value="best">
-            best
-          </a-select-option>
-          <a-select-option value="server">
-            server list
-          </a-select-option>
-        </a-select>
-      </a-form-item>
-      <a-form-item>
-        <a-button type="primary" html-type="submit">
-          <a-icon type="play-circle" />Start
-        </a-button>
-      </a-form-item>
-    </a-form>
+    <a-divider />
 
-    {{ serverList }}
+    <!-- {{ serverList }} -->
   </div>
 </template>
 
@@ -114,18 +116,35 @@ export default {
       user_country: '',
       user_city: '',
       user_isp: '',
+      user_code: '',
       serverList: [],
-      serverListModal: false
+      serverListModal: false,
+      selectedServer: {
+        id: -1,
+        name: 'Best server'
+      },
+      serverUserCountry: []
     }
   },
   created () {
     this.getLocation()
-    this.getServerList()
-    this.getReadFile()
+    // this.getServerList()
+    // this.getReadFile()
+    // var url = 'http://speed-kaunas.zebra.lt/speedtest/upload.php'
+    var url = 'http://speedtest.lixp.lt/speedtest/upload.php'
+    this.$rpc.call('speedtest', 'speedTestCurl', { url: url }).then(r => {
+      console.log('Res:')
+      console.log(r)
+    })
   },
   methods: {
     startTest () {
       console.log('startTest')
+      if (this.selectedServer.id === -1) {
+        console.log('Searching for best server')
+      } else {
+        console.log('Selected server: ' + this.selectedServer.name)
+      }
     },
     btnSelect () {
       this.serverListModal = !this.serverListModal
@@ -134,6 +153,8 @@ export default {
       console.log(index, name)
       console.log(this.serverList[index].url)
       this.serverListModal = false
+      this.selectedServer.name = this.serverList[index].name + ' ' + this.serverList[index].sponsor
+      this.selectedServer.id = index
     },
     getLocation () {
       this.$rpc.call('speedtest', 'getLocation', { }).then(data => {
@@ -142,37 +163,59 @@ export default {
         this.user_country = results.country
         this.user_city = results.city
         this.user_isp = results.isp
+        this.user_code = results.country_code
+        console.log(this.user_city.normalize())
       })
     },
     getServerList () {
       this.$rpc.call('speedtest', 'getServerList', { }).then(data => {
-        console.log(data.response)
-        // console.log(data.result)
+        console.log(data)
+        this.getReadFile()
       })
     },
     getReadFile () {
       this.serverList = []
-      this.$rpc.call('speedtest', 'readFile', { from: 1, to: 11 }).then(data => {
-        var parser = new DOMParser()
-        console.log(data.length)
-        console.log(data)
-        var count = 0
-        for (var i = 0; i < data.length; i++) {
-          var xmlDoc = parser.parseFromString(data[i], 'text/xml')
-          var xmlServer = xmlDoc.getElementsByTagName('server')
-          // console.log(data[i])
-          if (xmlServer[0]) {
-            // console.log(xmlServer[0])
-            // console.log(xmlServer[0].getAttribute('name'))
-            this.serverList.push({ key: count, name: xmlServer[0].getAttribute('name'), url: xmlServer[0].getAttribute('url'), country: xmlServer[0].getAttribute('country'), sponsor: xmlServer[0].getAttribute('sponsor'), host: xmlServer[0].getAttribute('host') })
-            count++
+      this.$rpc.call('speedtest', 'readFile', { from: 1, to: 6938 }).then(data => {
+        if (data) {
+          var parser = new DOMParser()
+          console.log(data.length)
+          // console.log(data)
+          var count = 0
+          for (var i = 0; i < data.length; i++) {
+            var xmlDoc = parser.parseFromString(data[i], 'text/xml')
+            var xmlServer = xmlDoc.getElementsByTagName('server')
+            // console.log(data[i])
+            if (xmlServer[0]) {
+              // console.log(xmlServer[0])
+              // console.log(xmlServer[0].getAttribute('name'))
+              this.serverList.push({ key: count, name: xmlServer[0].getAttribute('name'), url: xmlServer[0].getAttribute('url'), country: xmlServer[0].getAttribute('country'), sponsor: xmlServer[0].getAttribute('sponsor'), host: xmlServer[0].getAttribute('host') })
+              if (this.user_code === xmlServer[0].getAttribute('cc')) {
+                console.log(xmlServer[0].getAttribute('name'))
+                this.serverUserCountry.push(count)
+                this.speedTestCurl(xmlServer[0].getAttribute('url'))
+              }
+              count++
+            }
+            // console.log(i)
           }
-          // console.log(i)
         }
-        // this.serverList.push({  })
       })
       // this.$rpc.call('speedtest', 'readAllFile', { }).then(data => {
       //   console.log(data)
+      // })
+    },
+    speedTestCurl (url) {
+      console.log(url)
+      // var myFirstPromise = new Promise((resolve, reject) => {
+      //   setTimeout(function () {
+      //     resolve('Success!')
+      //   }, 250)
+      // })
+      // myFirstPromise.then((successMessage) => {
+      //   console.log('Yay! ' + successMessage)
+      // })
+      // this.$rpc.call('speedtest', 'speedTestCurl', { url: url }).then(r => {
+      //   console.log(r)
       // })
     }
   }
