@@ -43,21 +43,9 @@
 
     <a-divider />
 
-    <a-modal v-model="serverListModal" :width="800" title="Choose server" @cancel="btnSelect" :footer="null" :sorter="true">
-      <a-table :columns="columns" :data-source="serverList">
-        <span slot="name" slot-scope="text">
-          <template> {{ text }}</template>
-        </span>
-        <span slot="country" slot-scope="text">
-          <template> {{ text }}</template>
-        </span>
-        <span slot="sponsor" slot-scope="text">
-          <template> {{ text }}</template>
-        </span>
-        <span slot="button" slot-scope="text, record">
-          <a-button type="primary" ghost @click="selectServer(record.key, record.name)">Select</a-button>
-        </span>
-      </a-table>
+    <a-modal v-model="serverListModal" :width="800" @cancel="closeModal()">
+      <server-list :serverList="serverList" @selectServer="selectServer" />
+      <template #footer><div/></template>
     </a-modal>
 
     {{ user_code }}
@@ -74,6 +62,7 @@
 <script>
 import { Gauge } from '@chrisheanan/vue-gauge'
 import Location from './components/Location'
+import ServerList from './components/ServerList'
 
 const columns = [
   {
@@ -100,7 +89,8 @@ const columns = [
 export default {
   components: {
     Gauge,
-    Location
+    Location,
+    ServerList
   },
   data () {
     return {
@@ -122,7 +112,6 @@ export default {
     }
   },
   created () {
-    // this.getLocation()
     this.getServerList()
     // error (6)
     // var url = 'http://speed-kaunas.zebra.lt/speedtest/upload.php'
@@ -145,12 +134,15 @@ export default {
       }
     },
     btnSelect () {
-      this.serverListModal = !this.serverListModal
+      this.serverListModal = true
     },
-    selectServer (index, name) {
+    closeModal () {
       this.serverListModal = false
-      this.selectedServer.name = this.serverList[index].name + ' ' + this.serverList[index].sponsor
-      this.selectedServer.id = index
+    },
+    selectServer (e) {
+      this.serverListModal = false
+      this.selectedServer.name = this.serverList[e].name + ' ' + this.serverList[e].sponsor
+      this.selectedServer.id = e
     },
     getLocation (e) {
       this.user_code = e
