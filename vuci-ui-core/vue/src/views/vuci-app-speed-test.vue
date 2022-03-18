@@ -1,14 +1,7 @@
 <template>
   <div class="speed-test">
     <a-row :gutter="16">
-      <a-col :span="8">
-        <a-card title="Information" style="width: 400px" :bordered="false">
-          <h4>Public IP address: {{ user_ip }}</h4>
-          <h4>Country: {{ user_country }}</h4>
-          <h4>City: {{ user_city }}</h4>
-          <h4>ISP: {{ user_isp }}</h4>
-        </a-card>
-      </a-col>
+      <location @cc="getLocation" />
       <a-col :span="8">
         <a-card title="Speed test" style="width: 400px" :bordered="false">
           <a-form @submit.prevent="startTest" :label-col="{ span: 8 }" :wrapper-col="{ span: 4 }">
@@ -67,6 +60,8 @@
       </a-table>
     </a-modal>
 
+    {{ user_code }}
+
     {{ selectedServer }}
     <br />
     Latencies:
@@ -78,6 +73,7 @@
 
 <script>
 import { Gauge } from '@chrisheanan/vue-gauge'
+import Location from './components/Location'
 
 const columns = [
   {
@@ -103,7 +99,8 @@ const columns = [
 
 export default {
   components: {
-    Gauge
+    Gauge,
+    Location
   },
   data () {
     return {
@@ -113,10 +110,6 @@ export default {
       inputServer: 'best',
       gaugeValue: 0,
       gaugeTitle: 'Begin speed test',
-      user_ip: '',
-      user_country: '',
-      user_city: '',
-      user_isp: '',
       user_code: '',
       serverList: [],
       serverListModal: false,
@@ -129,7 +122,7 @@ export default {
     }
   },
   created () {
-    this.getLocation()
+    // this.getLocation()
     this.getServerList()
     // error (6)
     // var url = 'http://speed-kaunas.zebra.lt/speedtest/upload.php'
@@ -148,7 +141,7 @@ export default {
       if (this.selectedServer.id === -1) {
         console.log('Searching for best server')
       } else {
-        console.log('Selected server: ' + this.selectedServer.name)
+        console.log('Selected server: ' + this.selectedServer.name + ' , ' + this.selectedServer.id)
       }
     },
     btnSelect () {
@@ -159,15 +152,8 @@ export default {
       this.selectedServer.name = this.serverList[index].name + ' ' + this.serverList[index].sponsor
       this.selectedServer.id = index
     },
-    getLocation () {
-      this.$rpc.call('speedtest', 'getLocation', { }).then(data => {
-        const results = JSON.parse(data.result)
-        this.user_ip = results.ip
-        this.user_country = results.country
-        this.user_city = results.city
-        this.user_isp = results.isp
-        this.user_code = results.country_code
-      })
+    getLocation (e) {
+      this.user_code = e
     },
     getServerList () {
       this.$rpc.call('speedtest', 'getServerList', { }).then(data => {
