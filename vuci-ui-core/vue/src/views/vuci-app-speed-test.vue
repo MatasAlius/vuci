@@ -6,7 +6,7 @@
         <a-card title="Speed test" style="width: 400px" :bordered="false">
           <a-form @submit.prevent="startTest" :label-col="{ span: 8 }" :wrapper-col="{ span: 4 }">
             <a-form-item label="Choose server">
-              <a-button @click="btnSelect"><a-icon type="dashboard" />{{ selectedServer.name }}</a-button>
+              <a-button @click="btnSelect"><a-icon :type="selectedServer.icon"/>{{ selectedServer.name }}</a-button>
             </a-form-item>
             <a-form-item>
               <a-button type="primary" html-type="submit" size="large">
@@ -27,19 +27,19 @@
       activeFill="red"
       inactiveFill="green"
     />
-    <a-icon slot="icon" type="disconnect" />
-    <a-icon slot="icon" type="check" />
     <a-steps :current="currentStep">
-      <a-step title="Connecting" description="This is a connecting description.">
-        <a-icon slot="icon" type="loading" />
+      <a-step :title="connection.title" :description="connection.description">
+        <a-icon slot="icon" :type="connection.icon" />
       </a-step>
-      <a-step title="Downlaod" description="This is a download description.">
-        <a-icon slot="icon" type="download" />
+      <a-step :title="download.title" :description="download.description">
+        <a-icon slot="icon" :type="download.icon" />
       </a-step>
-      <a-step title="Upload" description="This is a upload description.">
-        <a-icon slot="icon" type="upload" />
+      <a-step :title="upload.title" :description="upload.description">
+        <a-icon slot="icon" :type="upload.icon" />
       </a-step>
     </a-steps>
+
+    <!-- {{ upload_value | toMB }}  -->
 
     <a-divider />
 
@@ -96,7 +96,7 @@ export default {
     return {
       columns,
       time: '',
-      currentStep: 2,
+      currentStep: 0,
       inputServer: 'best',
       gaugeValue: 0,
       gaugeTitle: 'Begin speed test',
@@ -106,9 +106,30 @@ export default {
       selectedServer: {
         id: -1,
         name: 'Best server',
-        total: -1
+        total: -1,
+        icon: 'loading'
       },
-      serverUserCountry: []
+      serverUserCountry: [],
+      connection: {
+        title: 'Connection',
+        icon: 'play-circle',
+        description: 'Begin speed test'
+      },
+      upload: {
+        title: 'Upload',
+        icon: 'upload',
+        description: ''
+      },
+      download: {
+        title: 'Download',
+        icon: 'download',
+        description: ''
+      }
+    }
+  },
+  filters: {
+    toMB: function (value) {
+      return (value / 1000000).toFixed(2)
     }
   },
   created () {
@@ -116,7 +137,7 @@ export default {
     // error (6)
     // var url = 'http://speed-kaunas.zebra.lt/speedtest/upload.php'
     // var url = 'http://speedtest.meganet.lt/speedtest/speedtest/upload.php'
-    // this.$rpc.call('speedtest', 'speedTestCurl', { url: url }).then(r => {
+    // this.$rpc.call('speedtest', 'speedTestCurl', { url: url, size: 1024 }).then(r => {
     //   console.log('Results:')
     //   console.log(r)
     // }).catch(err => {
@@ -131,6 +152,28 @@ export default {
         console.log('Searching for best server')
       } else {
         console.log('Selected server: ' + this.selectedServer.name + ' , ' + this.selectedServer.id)
+        this.connection.icon = 'loading'
+        this.connection.description = 'Connecting'
+        this.upload.icon = 'upload'
+        this.upload.description = ''
+        this.currentStep = 0
+        this.gaugeValue = 0
+        // 1048576 - 1MB
+        // 10485760 - 10MB
+        this.$rpc.call('speedtest', 'speedTestCurl', { url: this.serverList[this.selectedServer.id].url, size: 5048576 }).then(r => {
+          console.log(r)
+          if (r.ok) {
+            this.connection.icon = 'check'
+            this.connection.description = 'Connected'
+            this.upload.icon = 'check'
+            this.upload.description = 'Upload speed: ' + this.$options.filters.toMB(r.upload) + 'MB/s'
+            this.gaugeValue = +this.$options.filters.toMB(r.upload)
+            this.currentStep = 2
+          } else {
+            this.connection.icon = 'disconnect'
+            this.connection.description = 'Error'
+          }
+        })
       }
     },
     btnSelect () {
@@ -173,7 +216,8 @@ export default {
       })
     },
     speedTestCurl (url, index) {
-      this.$rpc.call('speedtest', 'speedTestCurl', { url: url }).then(r => {
+      this.$rpc.call('speedtest', 'speedTestCurl', { url: url, size: 1024 }).then(r => {
+        console.log(r)
         if (r.ok) {
           this.serverUserCountry.push({ key: index, total: r.total })
           if (this.selectedServer.id > -1) {
@@ -188,6 +232,7 @@ export default {
             this.selectedServer.total = r.total
           }
         }
+        this.selectedServer.icon = 'dashboard'
       })
     }
   }
