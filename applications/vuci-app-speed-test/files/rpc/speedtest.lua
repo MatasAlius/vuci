@@ -48,8 +48,6 @@ function M.getServerList(params)
 		}
 
 		f = io.open("/tmp/serverlist_orig.txt", "w")
-		-- login_url = "http://ipwhois.app/json/8.8.8.8"
-		-- be nurodyto ip rodys dabartinio ip info
 		local results
 
 		c = cURL.easy{
@@ -123,16 +121,19 @@ function M.speedTestCurl(params)
 		:setopt_url(params.url)
 		:setopt_httppost(post)
 		:setopt_timeout(2)
-		:setopt_connecttimeout(1)
+		:setopt_connecttimeout(2)
+		:setopt_accepttimeout_ms(2)
 	
 	local ok, err = pcall(function() c:perform() end)
 	params.ok = ok
 	params.err = err
-	params.response = c:getinfo_response_code()
 	if ok then
+		params.response = c:getinfo_response_code()
 		if params.response == 200 then
 			params.connect = c:getinfo_connect_time()
 			params.total = c:getinfo_total_time()
+		else
+			params.ok = false
 		end
 	end
 	c:close()

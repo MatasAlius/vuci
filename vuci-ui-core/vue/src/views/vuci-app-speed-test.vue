@@ -67,10 +67,11 @@
       </a-table>
     </a-modal>
 
+    {{ selectedServer }}
+    <br />
+    Latencies:
     {{ serverUserCountry }} {{ serverUserCountry.length }}
-
     <a-divider />
-
     <!-- {{ serverList }} -->
   </div>
 </template>
@@ -110,7 +111,7 @@ export default {
       time: '',
       currentStep: 2,
       inputServer: 'best',
-      gaugeValue: 20,
+      gaugeValue: 0,
       gaugeTitle: 'Begin speed test',
       user_ip: '',
       user_country: '',
@@ -121,21 +122,25 @@ export default {
       serverListModal: false,
       selectedServer: {
         id: -1,
-        name: 'Best server'
+        name: 'Best server',
+        total: -1
       },
       serverUserCountry: []
     }
   },
   created () {
     this.getLocation()
-    // this.getServerList()
-    // this.getReadFile()
+    this.getServerList()
+    // error (6)
     // var url = 'http://speed-kaunas.zebra.lt/speedtest/upload.php'
-    var url = 'http://speedtest.litnet.lt/speedtest/upload.php'
-    this.$rpc.call('speedtest', 'speedTestCurl', { url: url }).then(r => {
-      console.log('Results:')
-      console.log(r)
-    })
+    // var url = 'http://speedtest.meganet.lt/speedtest/speedtest/upload.php'
+    // this.$rpc.call('speedtest', 'speedTestCurl', { url: url }).then(r => {
+    //   console.log('Results:')
+    //   console.log(r)
+    // }).catch(err => {
+    //   console.log('Klaida: ')
+    //   console.log(err)
+    // })
   },
   methods: {
     startTest () {
@@ -150,8 +155,6 @@ export default {
       this.serverListModal = !this.serverListModal
     },
     selectServer (index, name) {
-      console.log(index, name)
-      console.log(this.serverList[index].url)
       this.serverListModal = false
       this.selectedServer.name = this.serverList[index].name + ' ' + this.serverList[index].sponsor
       this.selectedServer.id = index
@@ -164,12 +167,10 @@ export default {
         this.user_city = results.city
         this.user_isp = results.isp
         this.user_code = results.country_code
-        console.log(this.user_city.normalize())
       })
     },
     getServerList () {
       this.$rpc.call('speedtest', 'getServerList', { }).then(data => {
-        console.log(data)
         this.getReadFile()
       })
     },
@@ -178,45 +179,38 @@ export default {
       this.$rpc.call('speedtest', 'readFile', { from: 1, to: 6938 }).then(data => {
         if (data) {
           var parser = new DOMParser()
-          console.log(data.length)
-          // console.log(data)
           var count = 0
           for (var i = 0; i < data.length; i++) {
             var xmlDoc = parser.parseFromString(data[i], 'text/xml')
             var xmlServer = xmlDoc.getElementsByTagName('server')
-            // console.log(data[i])
             if (xmlServer[0]) {
-              // console.log(xmlServer[0])
-              // console.log(xmlServer[0].getAttribute('name'))
               this.serverList.push({ key: count, name: xmlServer[0].getAttribute('name'), url: xmlServer[0].getAttribute('url'), country: xmlServer[0].getAttribute('country'), sponsor: xmlServer[0].getAttribute('sponsor'), host: xmlServer[0].getAttribute('host') })
               if (this.user_code === xmlServer[0].getAttribute('cc')) {
-                console.log(xmlServer[0].getAttribute('name'))
-                this.serverUserCountry.push(count)
-                this.speedTestCurl(xmlServer[0].getAttribute('url'))
+                this.speedTestCurl(xmlServer[0].getAttribute('url'), count)
               }
               count++
             }
-            // console.log(i)
           }
         }
       })
-      // this.$rpc.call('speedtest', 'readAllFile', { }).then(data => {
-      //   console.log(data)
-      // })
     },
-    speedTestCurl (url) {
-      console.log(url)
-      // var myFirstPromise = new Promise((resolve, reject) => {
-      //   setTimeout(function () {
-      //     resolve('Success!')
-      //   }, 250)
-      // })
-      // myFirstPromise.then((successMessage) => {
-      //   console.log('Yay! ' + successMessage)
-      // })
-      // this.$rpc.call('speedtest', 'speedTestCurl', { url: url }).then(r => {
-      //   console.log(r)
-      // })
+    speedTestCurl (url, index) {
+      this.$rpc.call('speedtest', 'speedTestCurl', { url: url }).then(r => {
+        if (r.ok) {
+          this.serverUserCountry.push({ key: index, total: r.total })
+          if (this.selectedServer.id > -1) {
+            if (this.selectedServer.total > r.total) {
+              this.selectedServer.id = index
+              this.selectedServer.name = 'Best server (' + this.serverList[index].name + ')'
+              this.selectedServer.total = r.total
+            }
+          } else {
+            this.selectedServer.id = index
+            this.selectedServer.name = 'Best server (' + this.serverList[index].name + ')'
+            this.selectedServer.total = r.total
+          }
+        }
+      })
     }
   }
 }
