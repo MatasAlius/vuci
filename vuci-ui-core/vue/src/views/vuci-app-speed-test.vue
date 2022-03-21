@@ -134,16 +134,6 @@ export default {
   },
   created () {
     this.getServerList()
-    // error (6)
-    // var url = 'http://speed-kaunas.zebra.lt/speedtest/upload.php'
-    // var url = 'http://speedtest.meganet.lt/speedtest/speedtest/upload.php'
-    // this.$rpc.call('speedtest', 'speedTestCurl', { url: url, size: 1024 }).then(r => {
-    //   console.log('Results:')
-    //   console.log(r)
-    // }).catch(err => {
-    //   console.log('Klaida: ')
-    //   console.log(err)
-    // })
   },
   methods: {
     startTest () {
