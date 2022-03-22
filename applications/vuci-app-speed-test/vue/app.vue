@@ -17,15 +17,15 @@
         </a-card>
       </a-col>
     </a-row>
-
+    <a-divider />
     <gauge
-      :heading="gaugeTitle"
+      :heading="gauge.title"
       :min="0"
-      :max="100"
-      :value="gaugeValue"
+      :max="gauge.max"
+      :value="gauge.value"
       :valueToExceedLimits="true"
       activeFill="red"
-      inactiveFill="green"
+      :inactiveFill="gauge.color"
     />
     <a-steps :current="currentStep">
       <a-step :title="connection.title" :description="connection.description">
@@ -39,19 +39,10 @@
       </a-step>
     </a-steps>
     <a-divider />
-
     <a-modal v-model="serverListModal" :width="800" @cancel="closeModal()">
       <server-list :serverList="serverList" @selectServer="selectServer" />
       <template #footer><div/></template>
     </a-modal>
-
-    {{ user_code }}
-
-    {{ selectedServer }}
-    <br />
-    Latencies:
-    {{ serverUserCountry }} {{ serverUserCountry.length }}
-    <a-divider />
   </div>
 </template>
 
@@ -68,11 +59,14 @@ export default {
   },
   data () {
     return {
-      time: '',
       currentStep: 0,
       inputServer: 'best',
-      gaugeValue: 0,
-      gaugeTitle: 'Begin speed test',
+      gauge: {
+        value: 0,
+        title: '',
+        color: 'green',
+        max: 100
+      },
       user_code: '',
       serverList: [],
       serverListModal: false,
@@ -97,53 +91,95 @@ export default {
         title: 'Download',
         icon: 'download',
         description: ''
-      },
-      count: 0
-    }
-  },
-  filters: {
-    toMB: function (value) {
-      return (value / 1000000).toFixed(2)
+      }
     }
   },
   timers: {
-    uploadReadFile: { name: 'uploadReadFile', time: 2000, autostart: false, immediate: true, repeat: true }
+    uploadReadFile: { name: 'uploadReadFile', time: 1000, autostart: false, immediate: true, repeat: true },
+    downloadReadFile: { name: 'downloadReadFile', time: 1000, autostart: false, immediate: true, repeat: true }
   },
   created () {
+    console.log(sessionStorage.getItem('server'))
     this.getServerList()
   },
   methods: {
     startTest () {
-      if (this.selectedServer.id !== -1) {
+      if (this.selectedServer.id === -1) {
+        this.gauge.title = 'Searching for best server'
+      } else {
         this.connection.icon = 'loading'
         this.connection.description = 'Connecting'
         this.upload.description = ''
         this.currentStep = 0
-        this.gaugeValue = 0
+        this.gauge.value = 0
+        this.gauge.color = 'green'
+        this.gauge.title = this.serverList[this.selectedServer.id].name + ' ' + this.serverList[this.selectedServer.id].sponsor
         this.$rpc.call('speedtest', 'speedTestCurl', { url: this.serverList[this.selectedServer.id].url, size: 1024 }).then(r => {
           if (r) {
-            this.connection.description = 'Latency: ' + r.connect + ' s'
-            this.connection.icon = 'check'
-            this.upload.icon = 'check'
-            this.currentStep = 1
-            this.$rpc.call('speedtest', 'speedTestUpload', { url: this.serverList[this.selectedServer.id].url, size: 20485760 }).then(r => {
-              this.upload.icon = 'loading'
-              this.$timer.start('uploadReadFile')
-            })
+            if (r.ok) {
+              this.connection.description = 'Latency: ' + r.connect + ' s'
+              this.connection.icon = 'check'
+              this.upload.icon = 'check'
+              this.currentStep = 1
+              this.downloadTest()
+            } else {
+              this.connection.description = 'Error'
+              this.connection.icon = 'disconnect'
+            }
+          } else {
+            this.connection.description = 'Error'
+            this.connection.icon = 'disconnect'
           }
         })
       }
     },
+    uploadTest () {
+      this.$rpc.call('speedtest', 'speedTestUpload', { url: this.serverList[this.selectedServer.id].url, size: 50485760 }).then(r => {
+        this.upload.icon = 'loading'
+        this.$timer.start('uploadReadFile')
+      })
+    },
     uploadReadFile () {
-      this.$rpc.call('speedtest', 'readAllFile', { path: '/tmp/speedtest.txt' }).then(r => {
+      this.$rpc.call('speedtest', 'readAllFile', { path: '/tmp/speedtest_up.txt' }).then(r => {
         if (r && r.length > 0) {
           const res = r[0].split(',')
-          this.upload.description = 'Upload speed: ' + (+res[5]).toFixed(2) + 'MB/s'
-          this.gaugeValue = +res[5]
+          this.upload.description = 'Speed: ' + (+res[3]).toFixed(2) + ' MB/s'
+          if (this.gauge.max < +res[3]) {
+            this.gauge.max = +((+res[3]).toFixed(0))
+          }
+          this.gauge.value = +res[3]
           this.currentStep = 2
-          if (res[3] === res[4]) {
+          if (res[1] !== 0 && res[1] === res[2]) {
             this.$timer.stop('uploadReadFile')
             this.upload.icon = 'upload'
+            this.gauge.value = 0
+          }
+        }
+      })
+    },
+    downloadTest () {
+      this.$rpc.call('speedtest', 'speedTestDownload', { url: this.serverList[this.selectedServer.id].host + '/download' }).then(r => {
+        this.download.icon = 'loading'
+        this.$timer.start('downloadReadFile')
+      })
+    },
+    downloadReadFile () {
+      this.$rpc.call('speedtest', 'readAllFile', { path: '/tmp/speedtest_down.txt' }).then(r => {
+        if (r && r.length > 0) {
+          const res = r[0].split(',')
+          this.download.description = 'Speed: ' + (+res[3]).toFixed(2) + ' MB/s'
+          if (this.gauge.max < +res[3]) {
+            this.gauge.max = +((+res[3]).toFixed(0))
+          }
+          this.gauge.value = +res[3]
+          this.currentStep = 1
+          if (res[1] !== 0 && res[1] === res[2]) {
+            this.$timer.stop('downloadReadFile')
+            this.download.icon = 'download'
+            this.currentStep = 2
+            this.gauge.value = 0
+            this.gauge.color = 'blue'
+            this.uploadTest()
           }
         }
       })
@@ -178,13 +214,11 @@ export default {
             var xmlServer = xmlDoc.getElementsByTagName('server')
             if (xmlServer[0]) {
               this.serverList.push({ key: count, name: xmlServer[0].getAttribute('name'), url: xmlServer[0].getAttribute('url'), country: xmlServer[0].getAttribute('country'), sponsor: xmlServer[0].getAttribute('sponsor'), host: xmlServer[0].getAttribute('host') })
-
               if (!sessionStorage.getItem('server')) {
                 if (this.user_code === xmlServer[0].getAttribute('cc')) {
                   this.speedTestCurl(xmlServer[0].getAttribute('url'), count)
                 }
               } else if (+count === +sessionStorage.getItem('server')) {
-                console.log('Yra')
                 this.selectedServer.id = sessionStorage.getItem('server')
                 this.selectedServer.name = 'Best server (' + this.serverList[this.selectedServer.id].name + ')'
                 this.selectedServer.icon = 'dashboard'

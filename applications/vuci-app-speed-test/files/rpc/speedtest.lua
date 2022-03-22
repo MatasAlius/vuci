@@ -35,27 +35,7 @@ function M.fileExists(path)
 	end
 end
 
-function M.readFile(params)
-  local arr = {}
-
-	local f = io.open(params.path, "r")
-	if f~=nil then
-		io.close(f)
-		local handle  = assert( io.open(params.path,"r") )
-		local value = handle:read("*line")
-		while value do
-			table.insert( arr, value )
-			value = handle:read("*line")
-		end
-		handle:close()
-		return arr
-	else
-		return arr
-	end
-end
-
 function M.getServerList(params)
-
 	local exists = M.fileExists('/tmp/serverlist.txt')
 
 	if exists == 0 then
@@ -161,8 +141,14 @@ function M.speedTestCurl(params)
 end
 
 function M.speedTestUpload(params)
-	os.execute('rm /tmp/speedtest.txt &')
+	os.execute('rm /tmp/speedtest_up.txt &')
 	os.execute('lua /tmp/upload.lua '..params.size..' '..params.url..' &')
+	return params
+end
+
+function M.speedTestDownload(params)
+	os.execute('rm /tmp/speedtest_down.txt &')
+	os.execute('lua /tmp/download.lua '..params.url..' &')
 	return params
 end
 
