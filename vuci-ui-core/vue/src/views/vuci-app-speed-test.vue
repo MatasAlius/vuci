@@ -40,22 +40,11 @@
         <a-icon slot="icon" :type="upload.icon" />
       </a-step>
     </a-steps>
-    <!-- {{ upload_value | toMB }}  -->
     <a-divider />
-
     <a-modal v-model="serverListModal" :width="800" @cancel="closeModal()">
       <server-list :serverList="serverList" @selectServer="selectServer" />
       <template #footer><div/></template>
     </a-modal>
-
-    <!-- {{ user_code }}
-
-    {{ selectedServer }}
-    <br />
-    Latencies:
-    {{ serverUserCountry }} {{ serverUserCountry.length }}
-    <a-divider /> -->
-    <!-- {{ serverList }} -->
   </div>
 </template>
 
@@ -119,35 +108,6 @@ export default {
   created () {
     console.log(sessionStorage.getItem('server'))
     this.getServerList()
-    // error (6)
-    // var url = 'http://speed-kaunas.zebra.lt/speedtest/upload.php'
-    // var url = 'http://speedtest.meganet.lt/speedtest/speedtest/upload.php'
-    // this.$rpc.call('speedtest', 'speedTestCurl', { url: url, size: 1024 }).then(r => {
-    //   console.log('Results:')
-    //   console.log(r)
-    // }).catch(err => {
-    //   console.log('Klaida: ')
-    //   console.log(err)
-    // })
-    // --------
-    // var url = 'http://speedtest.litnet.lt/speedtest/upload.php'
-    // this.$rpc.call('speedtest', 'speedTestUpload', { url: url, size: 20485760 }).then(r => {
-    //   console.log('Uploading:')
-    //   console.log(r)
-    //   this.$timer.start('readFile')
-    // }).catch(err => {
-    //   console.log('Klaida: ')
-    //   console.log(err)
-    // })
-    // --------
-    // this.$rpc.call('speedtest', 'speedTestDownload', { url: 'http://speedtest.tele2.net/100MB.zip' }).then(r => {
-    //   this.download.icon = 'loading'
-    //   console.log(r)
-    //   this.$timer.start('downloadReadFile')
-    // }).catch(err => {
-    //   console.log('Klaida: ')
-    //   console.log(err)
-    // })
   },
   methods: {
     startTest () {

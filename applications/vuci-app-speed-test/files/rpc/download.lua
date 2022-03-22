@@ -2,7 +2,6 @@
 local cURL = require("cURL")
 local params = {...}
 
-local results
 local start_time = os.clock()
 local end_time = os.clock()
 

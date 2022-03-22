@@ -7,7 +7,6 @@ os.execute('head -c '..params[1]..' /dev/urandom > /tmp/temp.txt')
 local post = cURL.form()
   :add_file  ("name", "/tmp/temp.txt", "text/plain")
 
-local results
 local start_time = os.clock()
 local end_time = os.clock()
 
