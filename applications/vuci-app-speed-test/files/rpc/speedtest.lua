@@ -152,4 +152,9 @@ function M.speedTestDownload(params)
 	return params
 end
 
+function M.removeFile(params)
+	os.execute('rm '..params.path..'')
+	return params
+end	
+
 return M

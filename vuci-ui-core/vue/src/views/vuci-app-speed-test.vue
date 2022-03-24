@@ -17,9 +17,7 @@
         </a-card>
       </a-col>
     </a-row>
-
     <a-divider />
-
     <gauge
       :heading="gauge.title"
       :min="0"
@@ -45,6 +43,7 @@
       <server-list :serverList="serverList" @selectServer="selectServer" />
       <template #footer><div/></template>
     </a-modal>
+
   </div>
 </template>
 
@@ -106,12 +105,12 @@ export default {
     downloadReadFile: { name: 'downloadReadFile', time: 1000, autostart: false, immediate: true, repeat: true }
   },
   created () {
-    console.log(sessionStorage.getItem('server'))
     this.getServerList()
+
   },
   methods: {
     startTest () {
-      console.log('startTest')
+      console.log('--------------')
       if (this.selectedServer.id === -1) {
         console.log('Searching for best server')
         this.gauge.title = 'Searching for best server'
@@ -146,9 +145,7 @@ export default {
       }
     },
     uploadTest () {
-      // 1048576 - 1MB
-      // 10485760 - 10MB
-      this.$rpc.call('speedtest', 'speedTestUpload', { url: this.serverList[this.selectedServer.id].url, size: 50485760 }).then(r => {
+      this.$rpc.call('speedtest', 'speedTestUpload', { url: this.serverList[this.selectedServer.id].url, size: 40485760 }).then(r => {
         this.upload.icon = 'loading'
         console.log(r)
         this.$timer.start('uploadReadFile')
@@ -163,25 +160,30 @@ export default {
         console.log(r)
         if (r && r.length > 0) {
           const res = r[0].split(',')
-          console.log(res)
-          this.upload.description = 'Speed: ' + (+res[3]).toFixed(2) + ' MB/s'
-          if (this.gauge.max < +res[3]) {
-            this.gauge.max = +((+res[3]).toFixed(0))
-          }
-          this.gauge.value = +res[3]
-          this.currentStep = 2
-          if (res[1] !== 0 && res[1] === res[2]) {
+          if (res[4] === '1') {
             console.log('true')
             this.$timer.stop('uploadReadFile')
             this.upload.icon = 'upload'
             this.gauge.value = 0
+          } else {
+            this.upload.description = 'Speed: ' + (+res[3]).toFixed(2) + ' MB/s'
+            if (this.gauge.max < +res[3]) {
+              this.gauge.max = +((+res[3]).toFixed(0))
+            }
+            this.gauge.value = +res[3]
+            this.currentStep = 2
+            if (res[1] !== '0' && res[1] === res[2]) {
+              console.log('true')
+              this.$timer.stop('uploadReadFile')
+              this.upload.icon = 'upload'
+              this.gauge.value = 0
+            }
           }
         }
       })
     },
     downloadTest () {
-      // http://speedtest.tele2.net/100MB.zip
-      this.$rpc.call('speedtest', 'speedTestDownload', { url: 'http://speedtest.tele2.net/100MB.zip' }).then(r => {
+      this.$rpc.call('speedtest', 'speedTestDownload', { url: 'http://' + this.serverList[this.selectedServer.id].host + '/download' }).then(r => {
         this.download.icon = 'loading'
         console.log(r)
         this.$timer.start('downloadReadFile')
@@ -196,21 +198,30 @@ export default {
         console.log(r)
         if (r && r.length > 0) {
           const res = r[0].split(',')
-          console.log(res)
-          this.download.description = 'Speed: ' + (+res[3]).toFixed(2) + ' MB/s'
-          if (this.gauge.max < +res[3]) {
-            this.gauge.max = +((+res[3]).toFixed(0))
-          }
-          this.gauge.value = +res[3]
-          this.currentStep = 1
-          if (res[1] !== 0 && res[1] === res[2]) {
-            console.log('true')
+          if (res[4] === '1') {
             this.$timer.stop('downloadReadFile')
             this.download.icon = 'download'
             this.currentStep = 2
             this.gauge.value = 0
             this.gauge.color = 'blue'
+            console.log('--------------')
             this.uploadTest()
+          } else {
+            this.download.description = 'Speed: ' + (+res[3]).toFixed(2) + ' MB/s'
+            if (this.gauge.max < +res[3]) {
+              this.gauge.max = +((+res[3]).toFixed(0))
+            }
+            this.gauge.value = +res[3]
+            this.currentStep = 1
+            if (res[1] !== '0' && res[1] === res[2]) {
+              this.$timer.stop('downloadReadFile')
+              this.download.icon = 'download'
+              this.currentStep = 2
+              this.gauge.value = 0
+              this.gauge.color = 'blue'
+              console.log('--------------')
+              this.uploadTest()
+            }
           }
         }
       })
@@ -262,7 +273,6 @@ export default {
     },
     speedTestCurl (url, index) {
       this.$rpc.call('speedtest', 'speedTestCurl', { url: url, size: 1024 }).then(r => {
-        console.log(r)
         if (r.ok) {
           this.serverUserCountry.push({ key: index, total: r.total })
           if (this.selectedServer.id > -1) {
