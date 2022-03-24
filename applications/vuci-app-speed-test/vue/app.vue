@@ -9,7 +9,7 @@
               <a-button @click="btnSelect"><a-icon :type="selectedServer.icon"/>{{ selectedServer.name }}</a-button>
             </a-form-item>
             <a-form-item>
-              <a-button type="primary" html-type="submit" size="large">
+              <a-button type="primary" html-type="submit" size="large" :disabled="disableStart">
                 <a-icon type="play-circle" />Start
               </a-button>
             </a-form-item>
@@ -26,6 +26,10 @@
       :valueToExceedLimits="true"
       activeFill="red"
       :inactiveFill="gauge.color"
+      unit="Mbps"
+      :unitOnArc="false"
+      :pointerStrokeWidth="10"
+      :pointerGap="2"
     />
     <a-steps :current="currentStep">
       <a-step :title="connection.title" :description="connection.description">
@@ -70,6 +74,7 @@ export default {
       user_code: '',
       serverList: [],
       serverListModal: false,
+      disableStart: false,
       selectedServer: {
         id: -1,
         name: 'Best server',
@@ -100,8 +105,8 @@ export default {
     }
   },
   timers: {
-    uploadReadFile: { name: 'uploadReadFile', time: 1000, autostart: false, immediate: true, repeat: true },
-    downloadReadFile: { name: 'downloadReadFile', time: 1000, autostart: false, immediate: true, repeat: true }
+    uploadReadFile: { name: 'uploadReadFile', time: 500, autostart: false, immediate: true, repeat: true },
+    downloadReadFile: { name: 'downloadReadFile', time: 500, autostart: false, immediate: true, repeat: true }
   },
   created () {
     this.getServerList()
@@ -118,10 +123,12 @@ export default {
         this.gauge.value = 0
         this.gauge.color = 'green'
         this.gauge.title = this.serverList[this.selectedServer.id].name + ' ' + this.serverList[this.selectedServer.id].sponsor
+        this.gauge.max = 100
+        this.disableStart = true
         this.$rpc.call('speedtest', 'speedTestCurl', { url: this.serverList[this.selectedServer.id].url, size: 1024 }).then(r => {
           if (r) {
             if (r.ok) {
-              this.connection.description = 'Latency: ' + r.connect + ' s'
+              this.connection.description = 'Latency: ' + (r.connect * 1000).toFixed(2) + ' ms'
               this.connection.icon = 'check'
               this.upload.icon = 'check'
               this.currentStep = 1
@@ -129,10 +136,12 @@ export default {
             } else {
               this.connection.description = 'Error'
               this.connection.icon = 'disconnect'
+              this.disableStart = false
             }
           } else {
             this.connection.description = 'Error'
             this.connection.icon = 'disconnect'
+            this.disableStart = false
           }
         })
       }
@@ -150,9 +159,14 @@ export default {
           if (res[4] === '1') {
             this.$timer.stop('uploadReadFile')
             this.upload.icon = 'upload'
+            if (this.gauge.value === 0) {
+              this.upload.icon = 'disconnect'
+              this.upload.description = 'Error'
+            }
             this.gauge.value = 0
+            this.disableStart = false
           } else {
-            this.upload.description = 'Speed: ' + (+res[3]).toFixed(2) + ' MB/s'
+            this.upload.description = 'Speed: ' + (+res[3]).toFixed(2) + ' Mb/s'
             if (this.gauge.max < +res[3]) {
               this.gauge.max = +((+res[3]).toFixed(0))
             }
@@ -162,6 +176,7 @@ export default {
               this.$timer.stop('uploadReadFile')
               this.upload.icon = 'upload'
               this.gauge.value = 0
+              this.disableStart = false
             }
           }
         }
@@ -181,11 +196,15 @@ export default {
             this.$timer.stop('downloadReadFile')
             this.download.icon = 'download'
             this.currentStep = 2
+            if (this.gauge.value === 0) {
+              this.download.icon = 'disconnect'
+              this.download.description = 'Error'
+            }
             this.gauge.value = 0
             this.gauge.color = 'blue'
             this.uploadTest()
           } else {
-            this.download.description = 'Speed: ' + (+res[3]).toFixed(2) + ' MB/s'
+            this.download.description = 'Speed: ' + (+res[3]).toFixed(2) + ' Mb/s'
             if (this.gauge.max < +res[3]) {
               this.gauge.max = +((+res[3]).toFixed(0))
             }
@@ -197,6 +216,7 @@ export default {
               this.currentStep = 2
               this.gauge.value = 0
               this.gauge.color = 'blue'
+              this.gauge.max = 100
               this.uploadTest()
             }
           }

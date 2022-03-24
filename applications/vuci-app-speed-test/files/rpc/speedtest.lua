@@ -119,7 +119,7 @@ function M.speedTestCurl(params)
 	local c = cURL.easy()
 		:setopt_url(params.url)
 		:setopt_httppost(post)
-		:setopt_timeout(4)
+		:setopt_timeout(5)
 		:setopt_connecttimeout(2)
 		:setopt_accepttimeout_ms(2)
 	
