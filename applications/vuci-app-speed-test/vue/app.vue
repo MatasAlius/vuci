@@ -43,7 +43,7 @@
       </a-step>
     </a-steps>
     <a-divider />
-    <a-modal v-model="serverListModal" :width="800" @cancel="closeModal()">
+    <a-modal v-model="serverListModal" :width="600" @cancel="closeModal()">
       <server-list :serverList="serverList" @selectServer="selectServer" />
       <template #footer><div/></template>
     </a-modal>
@@ -74,7 +74,7 @@ export default {
       user_code: '',
       serverList: [],
       serverListModal: false,
-      disableStart: false,
+      disableStart: true,
       selectedServer: {
         id: -1,
         name: 'Best server',
@@ -90,7 +90,9 @@ export default {
       upload: {
         title: 'Upload',
         icon: 'upload',
-        description: ''
+        description: '',
+        size: 40485760,
+        count: 0
       },
       download: {
         title: 'Download',
@@ -125,29 +127,31 @@ export default {
         this.gauge.title = this.serverList[this.selectedServer.id].name + ' ' + this.serverList[this.selectedServer.id].sponsor
         this.gauge.max = 100
         this.disableStart = true
-        this.$rpc.call('speedtest', 'speedTestCurl', { url: this.serverList[this.selectedServer.id].url, size: 1024 }).then(r => {
-          if (r) {
-            if (r.ok) {
-              this.connection.description = 'Latency: ' + (r.connect * 1000).toFixed(2) + ' ms'
-              this.connection.icon = 'check'
-              this.upload.icon = 'check'
-              this.currentStep = 1
-              this.downloadTest()
+        this.$rpc.call('speedtest', 'speedTest', { url: this.serverList[this.selectedServer.id].url, size: 1024, id: this.selectedServer.id }).then(data => {
+          this.$rpc.call('speedtest', 'readTestFile', { path: '/tmp/speedtest_connect_' + this.selectedServer.id + '.txt' }).then(data => {
+            if (data[0]) {
+              const res = data[0].split(',')
+              if (res[1] === 'true') {
+                this.connection.description = 'Latency: ' + (res[3] * 1000).toFixed(2) + ' ms'
+                this.connection.icon = 'check'
+                this.currentStep = 1
+                this.downloadTest()
+              } else {
+                this.connection.description = 'Error'
+                this.connection.icon = 'disconnect'
+                this.disableStart = false
+              }
             } else {
               this.connection.description = 'Error'
               this.connection.icon = 'disconnect'
               this.disableStart = false
             }
-          } else {
-            this.connection.description = 'Error'
-            this.connection.icon = 'disconnect'
-            this.disableStart = false
-          }
+          })
         })
       }
     },
     uploadTest () {
-      this.$rpc.call('speedtest', 'speedTestUpload', { url: this.serverList[this.selectedServer.id].url, size: 40485760 }).then(r => {
+      this.$rpc.call('speedtest', 'speedTestUpload', { url: this.serverList[this.selectedServer.id].url, size: this.upload.size }).then(r => {
         this.upload.icon = 'loading'
         this.$timer.start('uploadReadFile')
       })
@@ -160,24 +164,26 @@ export default {
             this.$timer.stop('uploadReadFile')
             this.upload.icon = 'upload'
             if (this.gauge.value === 0) {
-              this.upload.icon = 'disconnect'
-              this.upload.description = 'Error'
+              if (this.upload.count >= 3) {
+                this.upload.icon = 'disconnect'
+                this.upload.description = 'Error'
+              } else {
+                this.upload.count = this.upload.count + 1
+                this.$rpc.call('speedtest', 'speedTestUpload', { url: this.serverList[this.selectedServer.id].url, size: this.upload.size / 10 }).then(r => {
+                  this.upload.icon = 'loading'
+                  this.$timer.start('uploadReadFile')
+                })
+              }
+            } else {
+              this.gauge.value = 0
+              this.disableStart = false
             }
-            this.gauge.value = 0
-            this.disableStart = false
           } else {
             this.upload.description = 'Speed: ' + (+res[3]).toFixed(2) + ' Mb/s'
             if (this.gauge.max < +res[3]) {
               this.gauge.max = +((+res[3]).toFixed(0))
             }
             this.gauge.value = +res[3]
-            this.currentStep = 2
-            if (res[1] !== '0' && res[1] === res[2]) {
-              this.$timer.stop('uploadReadFile')
-              this.upload.icon = 'upload'
-              this.gauge.value = 0
-              this.disableStart = false
-            }
           }
         }
       })
@@ -202,6 +208,7 @@ export default {
             }
             this.gauge.value = 0
             this.gauge.color = 'blue'
+            this.gauge.max = 100
             this.uploadTest()
           } else {
             this.download.description = 'Speed: ' + (+res[3]).toFixed(2) + ' Mb/s'
@@ -209,16 +216,6 @@ export default {
               this.gauge.max = +((+res[3]).toFixed(0))
             }
             this.gauge.value = +res[3]
-            this.currentStep = 1
-            if (res[1] !== '0' && res[1] === res[2]) {
-              this.$timer.stop('downloadReadFile')
-              this.download.icon = 'download'
-              this.currentStep = 2
-              this.gauge.value = 0
-              this.gauge.color = 'blue'
-              this.gauge.max = 100
-              this.uploadTest()
-            }
           }
         }
       })
@@ -236,13 +233,14 @@ export default {
     },
     getLocation (e) {
       this.user_code = e
+      this.disableStart = false
     },
     getServerList () {
       this.$rpc.call('speedtest', 'getServerList', { }).then(data => {
-        this.getReadFile()
+        this.getReadServerFile()
       })
     },
-    getReadFile () {
+    getReadServerFile () {
       this.serverList = []
       this.$rpc.call('speedtest', 'readFile', { from: 1, to: 6938 }).then(data => {
         if (data) {
@@ -255,7 +253,30 @@ export default {
               this.serverList.push({ key: count, name: xmlServer[0].getAttribute('name'), url: xmlServer[0].getAttribute('url'), country: xmlServer[0].getAttribute('country'), sponsor: xmlServer[0].getAttribute('sponsor'), host: xmlServer[0].getAttribute('host') })
               if (!sessionStorage.getItem('server')) {
                 if (this.user_code === xmlServer[0].getAttribute('cc')) {
-                  this.speedTestCurl(xmlServer[0].getAttribute('url'), count)
+                  this.$rpc.call('speedtest', 'speedTest', { url: xmlServer[0].getAttribute('url'), size: 1024, id: count }).then(data => {
+                    this.$rpc.call('speedtest', 'readAllFile', { path: '/tmp/speedtest_connect_' + data.id + '.txt' }).then(data => {
+                      if (data[0]) {
+                        const res = data[0].split(',')
+                        if (res[1] === 'true') {
+                          this.serverUserCountry.push({ key: res[0], total: res[4] })
+                          if (this.selectedServer.id > -1) {
+                            if (this.selectedServer.total > res[4]) {
+                              this.selectedServer.id = res[0]
+                              this.selectedServer.name = 'Best server (' + this.serverList[res[0]].name + ')'
+                              this.selectedServer.total = res[4]
+                              sessionStorage.setItem('server', res[0])
+                            }
+                          } else {
+                            this.selectedServer.id = res[0]
+                            this.selectedServer.name = 'Best server (' + this.serverList[res[0]].name + ')'
+                            this.selectedServer.total = res[4]
+                            sessionStorage.setItem('server', res[0])
+                          }
+                          this.selectedServer.icon = 'dashboard'
+                        }
+                      }
+                    })
+                  })
                 }
               } else if (+count === +sessionStorage.getItem('server')) {
                 this.selectedServer.id = sessionStorage.getItem('server')
@@ -266,27 +287,6 @@ export default {
             }
           }
         }
-      })
-    },
-    speedTestCurl (url, index) {
-      this.$rpc.call('speedtest', 'speedTestCurl', { url: url, size: 1024 }).then(r => {
-        if (r.ok) {
-          this.serverUserCountry.push({ key: index, total: r.total })
-          if (this.selectedServer.id > -1) {
-            if (this.selectedServer.total > r.total) {
-              this.selectedServer.id = index
-              this.selectedServer.name = 'Best server (' + this.serverList[index].name + ')'
-              this.selectedServer.total = r.total
-              sessionStorage.setItem('server', index)
-            }
-          } else {
-            this.selectedServer.id = index
-            this.selectedServer.name = 'Best server (' + this.serverList[index].name + ')'
-            this.selectedServer.total = r.total
-            sessionStorage.setItem('server', index)
-          }
-        }
-        this.selectedServer.icon = 'dashboard'
       })
     }
   }
