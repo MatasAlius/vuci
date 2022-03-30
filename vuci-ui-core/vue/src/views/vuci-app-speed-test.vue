@@ -91,7 +91,7 @@ export default {
         title: 'Upload',
         icon: 'upload',
         description: '',
-        size: 40485760,
+        size: 41943040,
         count: 0
       },
       download: {
@@ -131,7 +131,7 @@ export default {
                 if (data[0]) {
                   const res = data[0].split(',')
                   if (res[1] === 'true') {
-                    this.connection.description = 'Latency: ' + (res[3] * 1000).toFixed(2) + ' ms'
+                    this.connection.description = 'Latency: ' + (res[3] * 1000).toFixed(0) + ' ms'
                     this.connection.icon = 'check'
                     this.currentStep = 1
                     this.downloadTest()
@@ -157,9 +157,6 @@ export default {
         this.upload.icon = 'loading'
         console.log(r)
         this.$timer.start('uploadReadFile')
-      }).catch(err => {
-        console.log('Klaida: ')
-        console.log(err)
       })
     },
     uploadReadFile () {
@@ -205,9 +202,6 @@ export default {
         this.download.icon = 'loading'
         console.log(r)
         this.$timer.start('downloadReadFile')
-      }).catch(err => {
-        console.log('Klaida: ')
-        console.log(err)
       })
     },
     downloadReadFile () {
@@ -273,13 +267,9 @@ export default {
               if (!sessionStorage.getItem('server')) {
                 if (this.user_code === xmlServer[0].getAttribute('cc')) {
                   this.$rpc.call('speedtest', 'speedTest', { url: xmlServer[0].getAttribute('url'), size: 1024, id: count }).then(data => {
-                    console.log('inside1')
-                    console.log(data)
                     const delayPromise = new Promise((resolve, reject) => {
                       setTimeout(() => {
                         this.$rpc.call('speedtest', 'readAllFile', { path: '/tmp/speedtest_connect_' + data.id + '.txt' }).then(data => {
-                          console.log('inside2')
-                          console.log(data)
                           if (data[0]) {
                             const res = data[0].split(',')
                             if (res[1] === 'true') {

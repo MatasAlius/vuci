@@ -91,7 +91,7 @@ export default {
         title: 'Upload',
         icon: 'upload',
         description: '',
-        size: 40485760,
+        size: 41943040,
         count: 0
       },
       download: {
@@ -110,7 +110,6 @@ export default {
   },
   methods: {
     startTest () {
-      console.log('--------------')
       if (this.selectedServer.id === -1) {
         this.gauge.title = 'Searching for best server'
       } else {
@@ -127,11 +126,10 @@ export default {
           const delayPromise = new Promise((resolve, reject) => {
             setTimeout(() => {
               this.$rpc.call('speedtest', 'readAllFile', { path: '/tmp/speedtest_connect_' + this.selectedServer.id + '.txt' }).then(data => {
-                console.log(data)
                 if (data[0]) {
                   const res = data[0].split(',')
                   if (res[1] === 'true') {
-                    this.connection.description = 'Latency: ' + (res[3] * 1000).toFixed(2) + ' ms'
+                    this.connection.description = 'Latency: ' + (res[3] * 1000).toFixed(0) + ' ms'
                     this.connection.icon = 'check'
                     this.currentStep = 1
                     this.downloadTest()
@@ -155,17 +153,11 @@ export default {
     uploadTest () {
       this.$rpc.call('speedtest', 'speedTestUpload', { url: this.serverList[this.selectedServer.id].url, size: this.upload.size }).then(r => {
         this.upload.icon = 'loading'
-        console.log(r)
         this.$timer.start('uploadReadFile')
-      }).catch(err => {
-        console.log('Klaida: ')
-        console.log(err)
       })
     },
     uploadReadFile () {
       this.$rpc.call('speedtest', 'readAllFile', { path: '/tmp/speedtest_up.txt' }).then(r => {
-        console.log('Results:')
-        console.log(r)
         if (r && r.length > 0) {
           const res = r[0].split(',')
           if (res[4] === '1') {
@@ -173,7 +165,6 @@ export default {
             this.upload.icon = 'upload'
             if (this.gauge.value === 0) {
               if (this.upload.count >= 3) {
-                console.log('Done')
                 this.upload.icon = 'disconnect'
                 this.upload.description = 'Error'
                 this.disableStart = false
@@ -181,12 +172,10 @@ export default {
                 this.upload.count = this.upload.count + 1
                 this.$rpc.call('speedtest', 'speedTestUpload', { url: this.serverList[this.selectedServer.id].url, size: this.upload.size / 10 }).then(r => {
                   this.upload.icon = 'loading'
-                  console.log(r)
                   this.$timer.start('uploadReadFile')
                 })
               }
             } else {
-              console.log('Done')
               this.gauge.value = 0
               this.disableStart = false
             }
@@ -203,17 +192,11 @@ export default {
     downloadTest () {
       this.$rpc.call('speedtest', 'speedTestDownload', { url: 'http://' + this.serverList[this.selectedServer.id].host + '/download' }).then(r => {
         this.download.icon = 'loading'
-        console.log(r)
         this.$timer.start('downloadReadFile')
-      }).catch(err => {
-        console.log('Klaida: ')
-        console.log(err)
       })
     },
     downloadReadFile () {
       this.$rpc.call('speedtest', 'readAllFile', { path: '/tmp/speedtest_down.txt' }).then(r => {
-        console.log('Results:')
-        console.log(r)
         if (r && r.length > 0) {
           const res = r[0].split(',')
           if (res[4] === '1') {
@@ -227,7 +210,6 @@ export default {
             this.gauge.value = 0
             this.gauge.color = 'blue'
             this.gauge.max = 100
-            console.log('--------------')
             this.uploadTest()
           } else {
             this.download.description = 'Speed: ' + (+res[3]).toFixed(2) + ' Mb/s'
@@ -273,13 +255,9 @@ export default {
               if (!sessionStorage.getItem('server')) {
                 if (this.user_code === xmlServer[0].getAttribute('cc')) {
                   this.$rpc.call('speedtest', 'speedTest', { url: xmlServer[0].getAttribute('url'), size: 1024, id: count }).then(data => {
-                    console.log('inside1')
-                    console.log(data)
                     const delayPromise = new Promise((resolve, reject) => {
                       setTimeout(() => {
                         this.$rpc.call('speedtest', 'readAllFile', { path: '/tmp/speedtest_connect_' + data.id + '.txt' }).then(data => {
-                          console.log('inside2')
-                          console.log(data)
                           if (data[0]) {
                             const res = data[0].split(',')
                             if (res[1] === 'true') {
