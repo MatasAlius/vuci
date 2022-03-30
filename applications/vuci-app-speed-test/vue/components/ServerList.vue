@@ -24,17 +24,21 @@ const columns = [
     title: 'Name',
     dataIndex: 'name',
     key: 'name',
-    scopedSlots: { customRender: 'name' }
+    scopedSlots: { customRender: 'name' },
+    sorter: (a, b) => a.name > b.name ? 1 : -1
   },
   {
     title: 'Country',
     dataIndex: 'country',
-    key: 'country'
+    key: 'country',
+    sorter: (a, b) => a.country > b.country ? 1 : -1,
+    defaultSortOrder: 'ascend'
   },
   {
     title: 'Sponsor',
     dataIndex: 'sponsor',
-    key: 'sponsor'
+    key: 'sponsor',
+    sorter: (a, b) => a.sponsor > b.sponsor ? 1 : -1
   },
   {
     scopedSlots: { customRender: 'button' }
