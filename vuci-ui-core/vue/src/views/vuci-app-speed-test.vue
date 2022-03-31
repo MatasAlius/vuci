@@ -125,10 +125,6 @@ export default {
           const delayPromise = new Promise((resolve, reject) => {
             setTimeout(() => {
               this.$rpc.call('speedtest', 'readAllFile', { path: '/tmp/speedtest_connect_' + this.selectedServer.id + '.txt' }).then(data => {
-<<<<<<< HEAD
-=======
-                console.log(data)
->>>>>>> 1da6e8bbb89cbdaf69b5c44c78be2d45d50bc380
                 if (data[0]) {
                   const res = data[0].split(',')
                   if (res[1] === 'true') {
@@ -154,10 +150,7 @@ export default {
       }
     },
     uploadTest () {
-<<<<<<< HEAD
       this.upload.count = 0
-=======
->>>>>>> 1da6e8bbb89cbdaf69b5c44c78be2d45d50bc380
       this.$rpc.call('speedtest', 'speedTestUpload', { url: this.serverList[this.selectedServer.id].url, size: this.upload.size }).then(r => {
         this.upload.icon = 'loading'
         this.$timer.start('uploadReadFile')

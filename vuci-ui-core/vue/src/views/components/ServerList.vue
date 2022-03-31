@@ -32,7 +32,6 @@ const columns = [
     dataIndex: 'country',
     key: 'country',
     sorter: (a, b) => a.country > b.country ? 1 : -1,
-<<<<<<< HEAD
     defaultSortOrder: 'ascend',
     filters: [
       {
@@ -57,9 +56,6 @@ const columns = [
       }
     ],
     onFilter: (value, record) => record.country.includes(value)
-=======
-    defaultSortOrder: 'ascend'
->>>>>>> 1da6e8bbb89cbdaf69b5c44c78be2d45d50bc380
   },
   {
     title: 'Sponsor',
