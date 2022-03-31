@@ -2,11 +2,11 @@
 local cURL = require("cURL")
 local params = {...}
 
-os.execute('head -c '..params[1]..' /dev/urandom > temp.txt')
+os.execute('head -c '..params[1]..' /dev/urandom > /tmp/temp.txt')
 local post = cURL.form()
-  :add_file  ("name", "temp.txt", "text/plain")
+  :add_file  ("name", "/tmp/temp.txt", "text/plain")
 
-f = io.open("/tmp/speedtest_connect_"..params[3]..".txt", "a+")
+f = io.open("/tmp/speedtest_connect_"..params[3]..".txt", "w")
 f:flush()
 
 local response = -1

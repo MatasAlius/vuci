@@ -163,26 +163,4 @@ function M.speedTest(params)
 	return params
 end
 
-function M.readTestFile(params)
-	os.execute('sleep 1')
-  local arr = {}
-
-	local path = params.path
-
-	local f = io.open(path, "r")
-	if f~=nil then
-		io.close(f)
-		local handle  = assert( io.open(path,"r") )
-		local value = handle:read("*line")
-		while value do
-			table.insert( arr, value )
-			value = handle:read("*line")
-		end
-		handle:close()
-		return arr
-	else
-		return arr
-	end
-end
-
 return M
