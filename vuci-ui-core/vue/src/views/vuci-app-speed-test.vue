@@ -47,15 +47,6 @@
       <server-list :serverList="serverList" @selectServer="selectServer" />
       <template #footer><div/></template>
     </a-modal>
-
-    <!-- {{ user_code }}
-
-    {{ selectedServer }}
-    <br />
-    Latencies:
-    {{ serverUserCountry }} {{ serverUserCountry.length }}
-    <a-divider /> -->
-    <!-- {{ serverList }} -->
   </div>
 </template>
 
@@ -73,7 +64,6 @@ export default {
   data () {
     return {
       currentStep: 0,
-      inputServer: 'best',
       gauge: {
         value: 0,
         title: '',
@@ -100,7 +90,7 @@ export default {
         title: 'Upload',
         icon: 'upload',
         description: '',
-        size: 40485760,
+        size: 41943040,
         count: 0
       },
       download: {
@@ -110,58 +100,18 @@ export default {
       }
     }
   },
-  filters: {
-    toMB: function (value) {
-      return (value / 1000000).toFixed(2)
-    }
-  },
   timers: {
     uploadReadFile: { name: 'uploadReadFile', time: 500, autostart: false, immediate: true, repeat: true },
     downloadReadFile: { name: 'downloadReadFile', time: 500, autostart: false, immediate: true, repeat: true }
   },
   created () {
     this.getServerList()
-    // error (6)
-    // var url = 'http://speed-kaunas.zebra.lt/speedtest/upload.php'
-    // var url = 'http://speedtest.meganet.lt/speedtest/speedtest/upload.php'
-    // this.$rpc.call('speedtest', 'speedTestCurl', { url: url, size: 1024 }).then(r => {
-    //   console.log('Results:')
-    //   console.log(r)
-    // }).catch(err => {
-    //   console.log('Klaida: ')
-    //   console.log(err)
-    // })
-    // --------
-    // var url = 'http://speedtest.litnet.lt/speedtest/upload.php'
-    // this.$rpc.call('speedtest', 'speedTestUpload', { url: url, size: 20485760 }).then(r => {
-    //   console.log('Uploading:')
-    //   console.log(r)
-    //   this.$timer.start('readFile')
-    // }).catch(err => {
-    //   console.log('Klaida: ')
-    //   console.log(err)
-    // })
-    // --------
-    // this.$rpc.call('speedtest', 'speedTestDownload', { url: 'http://speedtest.litnet.lt:8080/speedtest/download' }).then(r => {
-    //   this.download.icon = 'loading'
-    //   console.log(r)
-    //   this.$timer.start('downloadReadFile')
-    // }).catch(err => {
-    //   console.log('Klaida: ')
-    //   console.log(err)
-    // })
-    // --------
-    // 451, http://speedtest.litnet.lt:8080/download
-    // 368, Klaipeda Telia
   },
   methods: {
     startTest () {
-      console.log('--------------')
       if (this.selectedServer.id === -1) {
-        console.log('Searching for best server')
         this.gauge.title = 'Searching for best server'
       } else {
-        console.log('Selected server: ' + this.selectedServer.name + ' , ' + this.selectedServer.id)
         this.connection.icon = 'loading'
         this.connection.description = 'Connecting'
         this.upload.description = ''
@@ -172,44 +122,42 @@ export default {
         this.gauge.max = 100
         this.disableStart = true
         this.$rpc.call('speedtest', 'speedTest', { url: this.serverList[this.selectedServer.id].url, size: 1024, id: this.selectedServer.id }).then(data => {
-          this.$rpc.call('speedtest', 'readTestFile', { path: '/tmp/speedtest_connect_' + this.selectedServer.id + '.txt' }).then(data => {
-            if (data[0]) {
-              const res = data[0].split(',')
-              if (res[1] === 'true') {
-                this.connection.description = 'Latency: ' + (res[3] * 1000).toFixed(2) + ' ms'
-                this.connection.icon = 'check'
-                this.currentStep = 1
-                this.downloadTest()
-              } else {
-                this.connection.description = 'Error'
-                this.connection.icon = 'disconnect'
-                this.disableStart = false
-              }
-            } else {
-              this.connection.description = 'Error'
-              this.connection.icon = 'disconnect'
-              this.disableStart = false
-            }
+          const delayPromise = new Promise((resolve, reject) => {
+            setTimeout(() => {
+              this.$rpc.call('speedtest', 'readAllFile', { path: '/tmp/speedtest_connect_' + this.selectedServer.id + '.txt' }).then(data => {
+                if (data[0]) {
+                  const res = data[0].split(',')
+                  if (res[1] === 'true') {
+                    this.connection.description = 'Latency: ' + (res[3] * 1000).toFixed(0) + ' ms'
+                    this.connection.icon = 'check'
+                    this.currentStep = 1
+                    this.downloadTest()
+                  } else {
+                    this.connection.description = 'Error'
+                    this.connection.icon = 'disconnect'
+                    this.disableStart = false
+                  }
+                } else {
+                  this.connection.description = 'Error'
+                  this.connection.icon = 'disconnect'
+                  this.disableStart = false
+                }
+              })
+            }, 2000)
           })
+          delayPromise.then()
         })
       }
     },
     uploadTest () {
-      // 1048576 - 1MB
-      // 10485760 - 10MB
+      this.upload.count = 0
       this.$rpc.call('speedtest', 'speedTestUpload', { url: this.serverList[this.selectedServer.id].url, size: this.upload.size }).then(r => {
         this.upload.icon = 'loading'
-        console.log(r)
         this.$timer.start('uploadReadFile')
-      }).catch(err => {
-        console.log('Klaida: ')
-        console.log(err)
       })
     },
     uploadReadFile () {
       this.$rpc.call('speedtest', 'readAllFile', { path: '/tmp/speedtest_up.txt' }).then(r => {
-        console.log('Results:')
-        console.log(r)
         if (r && r.length > 0) {
           const res = r[0].split(',')
           if (res[4] === '1') {
@@ -217,19 +165,17 @@ export default {
             this.upload.icon = 'upload'
             if (this.gauge.value === 0) {
               if (this.upload.count >= 3) {
-                console.log('Done')
                 this.upload.icon = 'disconnect'
                 this.upload.description = 'Error'
+                this.disableStart = false
               } else {
                 this.upload.count = this.upload.count + 1
                 this.$rpc.call('speedtest', 'speedTestUpload', { url: this.serverList[this.selectedServer.id].url, size: this.upload.size / 10 }).then(r => {
                   this.upload.icon = 'loading'
-                  console.log(r)
                   this.$timer.start('uploadReadFile')
                 })
               }
             } else {
-              console.log('Done')
               this.gauge.value = 0
               this.disableStart = false
             }
@@ -246,17 +192,11 @@ export default {
     downloadTest () {
       this.$rpc.call('speedtest', 'speedTestDownload', { url: 'http://' + this.serverList[this.selectedServer.id].host + '/download' }).then(r => {
         this.download.icon = 'loading'
-        console.log(r)
         this.$timer.start('downloadReadFile')
-      }).catch(err => {
-        console.log('Klaida: ')
-        console.log(err)
       })
     },
     downloadReadFile () {
       this.$rpc.call('speedtest', 'readAllFile', { path: '/tmp/speedtest_down.txt' }).then(r => {
-        console.log('Results:')
-        console.log(r)
         if (r && r.length > 0) {
           const res = r[0].split(',')
           if (res[4] === '1') {
@@ -270,7 +210,6 @@ export default {
             this.gauge.value = 0
             this.gauge.color = 'blue'
             this.gauge.max = 100
-            console.log('--------------')
             this.uploadTest()
           } else {
             this.download.description = 'Speed: ' + (+res[3]).toFixed(2) + ' Mb/s'
@@ -315,32 +254,34 @@ export default {
               this.serverList.push({ key: count, name: xmlServer[0].getAttribute('name'), url: xmlServer[0].getAttribute('url'), country: xmlServer[0].getAttribute('country'), sponsor: xmlServer[0].getAttribute('sponsor'), host: xmlServer[0].getAttribute('host') })
               if (!sessionStorage.getItem('server')) {
                 if (this.user_code === xmlServer[0].getAttribute('cc')) {
-                  // this.speedTestCurl(xmlServer[0].getAttribute('url'), count)
-                  console.log(count)
                   this.$rpc.call('speedtest', 'speedTest', { url: xmlServer[0].getAttribute('url'), size: 1024, id: count }).then(data => {
-                    this.$rpc.call('speedtest', 'readAllFile', { path: '/tmp/speedtest_connect_' + data.id + '.txt' }).then(data => {
-                      if (data[0]) {
-                        const res = data[0].split(',')
-                        console.log(res)
-                        if (res[1] === 'true') {
-                          this.serverUserCountry.push({ key: res[0], total: res[4] })
-                          if (this.selectedServer.id > -1) {
-                            if (this.selectedServer.total > res[4]) {
-                              this.selectedServer.id = res[0]
-                              this.selectedServer.name = 'Best server (' + this.serverList[res[0]].name + ')'
-                              this.selectedServer.total = res[4]
-                              sessionStorage.setItem('server', res[0])
+                    const delayPromise = new Promise((resolve, reject) => {
+                      setTimeout(() => {
+                        this.$rpc.call('speedtest', 'readAllFile', { path: '/tmp/speedtest_connect_' + data.id + '.txt' }).then(data => {
+                          if (data[0]) {
+                            const res = data[0].split(',')
+                            if (res[1] === 'true') {
+                              this.serverUserCountry.push({ key: res[0], total: res[4] })
+                              if (this.selectedServer.id > -1) {
+                                if (this.selectedServer.total > res[4]) {
+                                  this.selectedServer.id = res[0]
+                                  this.selectedServer.name = 'Best server (' + this.serverList[res[0]].name + ')'
+                                  this.selectedServer.total = res[4]
+                                  sessionStorage.setItem('server', res[0])
+                                }
+                              } else {
+                                this.selectedServer.id = res[0]
+                                this.selectedServer.name = 'Best server (' + this.serverList[res[0]].name + ')'
+                                this.selectedServer.total = res[4]
+                                sessionStorage.setItem('server', res[0])
+                              }
+                              this.selectedServer.icon = 'dashboard'
                             }
-                          } else {
-                            this.selectedServer.id = res[0]
-                            this.selectedServer.name = 'Best server (' + this.serverList[res[0]].name + ')'
-                            this.selectedServer.total = res[4]
-                            sessionStorage.setItem('server', res[0])
                           }
-                          this.selectedServer.icon = 'dashboard'
-                        }
-                      }
+                        })
+                      }, 2000)
                     })
+                    delayPromise.then()
                   })
                 }
               } else if (+count === +sessionStorage.getItem('server')) {
@@ -352,27 +293,6 @@ export default {
             }
           }
         }
-      })
-    },
-    speedTestCurl (url, index) {
-      this.$rpc.call('speedtest', 'speedTestCurl', { url: url, size: 1024 }).then(r => {
-        if (r.ok) {
-          this.serverUserCountry.push({ key: index, total: r.total })
-          if (this.selectedServer.id > -1) {
-            if (this.selectedServer.total > r.total) {
-              this.selectedServer.id = index
-              this.selectedServer.name = 'Best server (' + this.serverList[index].name + ')'
-              this.selectedServer.total = r.total
-              sessionStorage.setItem('server', index)
-            }
-          } else {
-            this.selectedServer.id = index
-            this.selectedServer.name = 'Best server (' + this.serverList[index].name + ')'
-            this.selectedServer.total = r.total
-            sessionStorage.setItem('server', index)
-          }
-        }
-        this.selectedServer.icon = 'dashboard'
       })
     }
   }
